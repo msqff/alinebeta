@@ -5,6 +5,7 @@ import { generateItemSuggestions } from '../services/geminiService';
 interface ItemManagerProps {
     slots: ItemSlot[];
     assets: GalleryAsset[]; // All assets in this collection
+    finalAssets: GalleryAsset[]; // Final assets in this collection
     onAddItem: (name: string) => void;
     onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
     onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string) => void;
@@ -12,7 +13,7 @@ interface ItemManagerProps {
     collection: Collection;
 }
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, onAddItem, onSelectItem, onOpenTool, onEnterItem, collection }) => {
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, collection }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>([]);
@@ -94,14 +95,28 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, onAddIt
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar pb-20 items-stretch">
-                {slots.map((slot) => {
-                    const sketch = getAsset(slot.sketchId);
-                    const studio = getAsset(slot.studioImageId);
-                    const techpack = getAsset(slot.techPackId);
+                {(() => {
+                    const reversedFinalAssets = [...finalAssets].reverse();
+                    return slots.map((slot) => {
+                        // Check if there are any promoted (final) assets for this slot (get the most recent one)
+                        const finalStudio = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Studio Image');
+                        const finalSketch = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Sketch');
+                        const finalTechpack = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Tech Pack');
+
+                    const sketch = finalSketch || getAsset(slot.sketchId);
+                    const studio = finalStudio || getAsset(slot.studioImageId);
+                    const techpack = finalTechpack || getAsset(slot.techPackId);
                     
                     // Priority: Studio -> Sketch
                     const heroAsset = studio || sketch;
                     const heroType = studio ? 'studio' : 'sketch';
+
+                    // Determine if the hero asset is actually a final render or just a draft
+                    const isFinalRender = !!finalStudio;
+                    const isFinalSketch = !!finalSketch;
+                    const heroLabel = heroType === 'studio' 
+                        ? (isFinalRender ? 'Final Render' : 'Draft Render') 
+                        : (isFinalSketch ? 'Final Sketch' : 'Initial Sketch');
 
                     return (
                         <div key={slot.id} className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col relative group hover:bg-slate-900/60 transition-colors h-full w-full">
@@ -137,8 +152,8 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, onAddIt
                                     </div>
                                 )}
                                 {heroAsset && (
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] font-bold uppercase py-1 text-center backdrop-blur-sm">
-                                        {heroType === 'studio' ? 'Final Render' : 'Initial Sketch'}
+                                    <div className={`absolute bottom-0 left-0 right-0 ${isFinalRender || isFinalSketch ? 'bg-indigo-600/90' : 'bg-black/60'} text-white text-[10px] font-bold uppercase py-1 text-center backdrop-blur-sm`}>
+                                        {heroLabel}
                                     </div>
                                 )}
                             </div>
@@ -186,7 +201,8 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, onAddIt
                             </div>
                         </div>
                     );
-                })}
+                    });
+                })()}
 
                 {/* Suggestions */}
                 {suggestedItems.map((item, idx) => (

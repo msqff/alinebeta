@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, Modality, Type } from "@google/genai";
-import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona } from '../types';
+import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin } from '../types';
 
 const getAI = () => {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -410,7 +410,7 @@ export const checkVideoOperation = async (operation: any) => {
     return updatedOperation;
 }
 
-export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = []): Promise<TechPackSection[]> => {
+export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = []): Promise<{ sections: TechPackSection[], bomData: BOMRow[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[] }> => {
     const ai = getAI();
     
     // Use gemini-flash-lite-latest for maximum speed on structured data extraction
@@ -429,6 +429,44 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
                     }
                 ]
             }
+        ],
+        "sizingData": [
+            {
+                "pointOfMeasure": "Point of Measure (e.g., Chest Width, Body Length)",
+                "xs": "Measurement in cm",
+                "s": "Measurement in cm",
+                "m": "Measurement in cm",
+                "l": "Measurement in cm",
+                "xl": "Measurement in cm",
+                "xxl": "Measurement in cm"
+            }
+        ],
+        "bomData": [
+            {
+                "placement": "Placement (e.g., Main Body, Collar)",
+                "component": "Component (e.g., Fabric, Button)",
+                "description": "Detailed description",
+                "color": "Color specification",
+                "supplier": "Suggested supplier or generic",
+                "consumption": "Estimated consumption"
+            }
+        ],
+        "costingData": [
+            {
+                "materialName": "Material Name (e.g., Main Fabric, Zipper)",
+                "consumption": 1.5,
+                "unit": "meters",
+                "costPerUnit": 5.50
+            }
+        ],
+        "placementData": [
+            {
+                "pinNumber": 1,
+                "x": 50.5,
+                "y": 20.0,
+                "title": "Rib Knit Collar",
+                "note": "Twin needle coverstitch"
+            }
         ]
     }
 
@@ -436,13 +474,36 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
     1. Garment Features (Detail fits, cuts, and finishings${additionalImages.length > 0 ? ' as seen from all angles' : ''})
     2. Suggested Materials
     3. Construction Notes (Seams, stitching, hem type)
-    4. Bill of Materials (BOM)
+
+    CRITICAL INSTRUCTION FOR 'bomData':
+    - Generate a comprehensive Bill of Materials (BOM) for the garment.
+    - Include all fabrics, trims, labels, threads, and hardware.
+    - Provide realistic descriptions, placements, and estimated consumption.
 
     CRITICAL INSTRUCTION FOR 'options':
     - You MUST provide 1-3 plausible alternatives or variations for nearly every field to give the designer choices.
     - The 'value' should be your best guess based on the image.
     - The 'options' should be valid variations a designer might consider (e.g., if 'value' is 'Boxy Fit', 'options' could be ['Regular Fit', 'Oversized Fit']; if 'value' is '100% Cotton', 'options' could be ['95% Cotton 5% Elastane', 'Organic Cotton']).
     - Only leave 'options' empty if the feature is 100% unambiguous and unchangeable.
+
+    CRITICAL INSTRUCTION FOR 'sizingData':
+    - Generate a standard sizing and grading table for this garment. 'sizingData' must be an array of objects.
+    - Each object needs a 'pointOfMeasure' (e.g., 'Chest Width', 'Body Length') and estimated measurements in cm for 'xs', 's', 'm' (base size), 'l', 'xl', and 'xxl'.
+    - Use standard industry grading rules (e.g., +/- 2cm or 4cm between sizes).
+
+    CRITICAL INSTRUCTION FOR 'costingData':
+    - For every material and trim identified in the garment, generate a 'costingData' row.
+    - You must estimate the realistic 'consumption' (yield) required to make one garment (e.g., 2.5 for a dress, 1.2 for a shirt) and provide the 'unit' ('meters' for fabric, 'units' for zippers/buttons).
+    - Finally, estimate a realistic wholesale 'costPerUnit' in GBP (£) for that specific material based on industry averages.
+    - Ensure consumption and costPerUnit are numbers.
+
+    CRITICAL INSTRUCTION FOR 'placementData':
+    - Analyze the visual construction of the garment. Identify 4 to 6 key construction points (e.g., collar, cuffs, hem, zippers, unique seams).
+    - For each point, create a 'placementData' object.
+    - Provide a 'title' and a detailed manufacturing 'note' (e.g., 'Twin needle coverstitch').
+    - Crucially, you must estimate the precise location of this feature on the primary image using 'x' and 'y' coordinates as percentages from 0 to 100 (where x:0, y:0 is top-left).
+    - To ensure accuracy, imagine a tight bounding box around the garment itself, and place the pin exactly on the structural element you are describing. Do not place pins in the empty background.
+    - Give each a sequential 'pinNumber'.
 
     Output ONLY valid JSON. No markdown formatting.`;
 
@@ -487,7 +548,41 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
                 options: item.options || []
             }))
         }));
-        return sectionsWithIds;
+        
+        const bomDataWithIds: BOMRow[] = (parsed.bomData || []).map((row: any) => ({
+            ...row,
+            id: self.crypto.randomUUID()
+        }));
+
+        const sizingDataWithIds: SizingRow[] = (parsed.sizingData || []).map((row: any) => ({
+            id: self.crypto.randomUUID(),
+            pointOfMeasure: row.pointOfMeasure || '',
+            xs: row.xs || '',
+            s: row.s || '',
+            m: row.m || '',
+            l: row.l || '',
+            xl: row.xl || '',
+            xxl: row.xxl || ''
+        }));
+        
+        const costingDataWithIds: CostingRow[] = (parsed.costingData || []).map((row: any) => ({
+            id: self.crypto.randomUUID(),
+            materialName: row.materialName || '',
+            consumption: Number(row.consumption) || 0,
+            unit: row.unit || '',
+            costPerUnit: Number(row.costPerUnit) || 0
+        }));
+        
+        const placementDataWithIds: PlacementPin[] = (parsed.placementData || []).map((row: any) => ({
+            id: self.crypto.randomUUID(),
+            pinNumber: Number(row.pinNumber) || 0,
+            x: Number(row.x) || 0,
+            y: Number(row.y) || 0,
+            title: row.title || '',
+            note: row.note || ''
+        }));
+        
+        return { sections: sectionsWithIds, bomData: bomDataWithIds, sizingData: sizingDataWithIds, costingData: costingDataWithIds, placementData: placementDataWithIds };
     } catch (e) {
         console.error("Failed to parse Tech Pack JSON", e);
         throw new Error("Failed to generate structured Tech Pack.");

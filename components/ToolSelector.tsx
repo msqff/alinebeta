@@ -26,49 +26,49 @@ const ToolCard: React.FC<{ title: string; description: string; icon: React.React
 export const ToolSelector: React.FC<ToolSelectorProps> = ({ onSelectTool, itemName }) => {
     const tools = [
         {
-            key: 'moodboard' as Tool,
+            id: 'moodboard' as Tool,
             title: 'Mood Board Analyst',
             description: 'Analyze trends and generate fresh concepts from inspiration images.',
             icon: <MoodBoardIcon />,
         },
         {
-            key: 'sketch' as Tool,
+            id: 'sketch' as Tool,
             title: 'Sketch Generator',
             description: 'Rapidly create detailed professional fashion flats from text.',
             icon: <PencilIcon />,
         },
         {
-            key: 'visualiser' as Tool,
+            id: 'visualiser' as Tool,
             title: 'Product Visualiser',
             description: 'Render sketches into photorealistic studio quality product shots.',
             icon: <PaletteIcon />,
         },
         {
-            key: 'multiview' as Tool,
+            id: 'multiview' as Tool,
             title: 'Multi-View Generator',
             description: 'Generate consistent back, side, and detail views from a single front-view.',
             icon: <RotationIcon />,
         },
         {
-            key: 'model' as Tool,
+            id: 'model' as Tool,
             title: 'Model Placement',
             description: 'Showcase designs on AI models in customizable environments.',
             icon: <UserIcon />,
         },
         {
-            key: 'techpack' as Tool,
+            id: 'techpack' as Tool,
             title: 'Tech Pack Generator',
             description: 'Auto-generate comprehensive technical specifications for manufacturing.',
             icon: <ClipboardIcon />,
         },
         {
-            key: 'review' as Tool,
+            id: 'review' as Tool,
             title: 'Basic Audit',
             description: 'Audit designs for IP infringement risks and garment safety hazards.',
             icon: <ShieldCheckIcon />,
         },
         {
-            key: 'shopperPulse' as Tool,
+            id: 'shopperPulse' as Tool,
             title: 'Shopper Pulse',
             description: 'AI-driven commercial viability testing for the UK High Street.',
             icon: <HeartBeatIcon />,
@@ -99,7 +99,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ onSelectTool, itemNa
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 w-full max-w-[90rem]">
                 {tools.map((tool, index) => (
-                    <ToolCard key={tool.key} {...tool} onClick={() => onSelectTool(tool.key)} index={index} />
+                    <ToolCard key={tool.id} {...tool} onClick={() => onSelectTool(tool.id)} index={index} />
                 ))}
             </div>
         </div>

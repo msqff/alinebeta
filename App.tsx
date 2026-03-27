@@ -30,7 +30,7 @@ import { SaveSessionModal } from './components/SaveSessionModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateVideo, checkVideoOperation, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, blobToBase64, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData } from './services/fileService';
-import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, VideoItem, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot } from './types';
+import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, VideoItem, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin } from './types';
 
 const App: React.FC = () => {
     // Collection State
@@ -501,7 +501,7 @@ const App: React.FC = () => {
         setLoadingMessage("Generating Smart Tech Pack...");
         setError(null);
         try {
-            const data = await generateTechPack(item.source, additionalImages);
+            const { sections, sizingData, costingData, placementData } = await generateTechPack(item.source, additionalImages);
             const targetSlotId = getTargetSlotId(activeSlotId, item.id);
 
             const newTechPack: TechPackAsset = {
@@ -510,7 +510,10 @@ const App: React.FC = () => {
                 source: item.source,
                 additionalSources: additionalImages,
                 src: item.src,
-                data: data,
+                data: sections,
+                sizingData: sizingData,
+                costingData: costingData,
+                placementData: placementData,
                 parentId: item.id,
                 collectionId: activeCollection?.id,
                 itemSlotId: targetSlotId
@@ -647,8 +650,8 @@ const App: React.FC = () => {
         }
     }, [selectedImageForTool]);
 
-    const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[]) => {
-        const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData } : item);
+    const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => {
+        const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData } : item);
         setFinalGalleryItems(updater);
         setViewingTechPack(null);
     };
@@ -728,6 +731,7 @@ const App: React.FC = () => {
                 <ItemManager 
                     slots={itemSlots.filter(s => s.collectionId === activeCollection.id)}
                     assets={[...ideationGalleryItems, ...finalGalleryItems]}
+                    finalAssets={finalGalleryItems}
                     onAddItem={handleAddItemSlot}
                     onSelectItem={handleSelectSlotItem}
                     onOpenTool={handleOpenToolForSlot}
@@ -801,7 +805,7 @@ const App: React.FC = () => {
             {traceabilityStartItem && <TraceabilityModal startItem={traceabilityStartItem} allItems={allGalleryItems} onClose={() => setTraceabilityStartItem(null)} onSelectItem={(item) => handleSelectGalleryItem(item, 'ideation')} />}
             {isPatternModalOpen && <PatternGalleryModal patterns={generatedPatterns} onClose={() => setIsPatternModalOpen(false)} />}
             {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
-            {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData) => handleUpdateTechPackContent(viewingTechPack.id, newData)} />}
+            {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData)} />}
             {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}
             

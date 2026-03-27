@@ -105,6 +105,44 @@ export interface TechPackSection {
     items: TechPackItem[];
 }
 
+export interface SizingRow {
+    id: string;
+    pointOfMeasure: string;
+    xs: string;
+    s: string;
+    m: string;
+    l: string;
+    xl: string;
+    xxl: string;
+}
+
+export interface CostingRow {
+    id: string;
+    materialName: string;
+    consumption: number;
+    unit: string;
+    costPerUnit: number;
+}
+
+export interface BOMRow {
+    id: string;
+    placement: string;
+    component: string;
+    description: string;
+    color: string;
+    supplier: string;
+    consumption: string;
+}
+
+export interface PlacementPin {
+    id: string;
+    pinNumber: number;
+    x: number;
+    y: number;
+    title: string;
+    note: string;
+}
+
 export interface TechPackAsset {
     id: string;
     src: string; // data URI for <img> tag
@@ -112,6 +150,10 @@ export interface TechPackAsset {
     additionalSources?: ImageSource[]; // Back/Side views used for analysis
     tag: 'Tech Pack';
     data: TechPackSection[]; // Structured data
+    bomData?: BOMRow[]; // Bill of Materials data
+    sizingData?: SizingRow[]; // Sizing matrix data
+    costingData?: CostingRow[]; // Costing engine data
+    placementData?: PlacementPin[]; // Placement guide data
     parentId: string;
     collectionId?: string;
     itemSlotId?: string;

@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TechPackAsset, TechPackSection, TechPackItem } from '../types';
+import { TechPackAsset, TechPackSection, TechPackItem, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
+import { PdfExportModal } from './PdfExportModal';
 
 interface TechPackModalProps {
     techPack: TechPackAsset;
     onClose: () => void;
-    onSaveChanges: (newData: TechPackSection[]) => void;
+    onSaveChanges: (newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => void;
 }
 
 const TechPackRow: React.FC<{
@@ -214,17 +215,66 @@ const TechPackSectionRenderer: React.FC<{
 export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose, onSaveChanges }) => {
     // Current State
     const [sections, setSections] = useState<TechPackSection[]>(techPack.data || []);
-    // History Management
-    const [history, setHistory] = useState<TechPackSection[][]>([]);
-    const [future, setFuture] = useState<TechPackSection[][]>([]);
+    const [sizingData, setSizingData] = useState<SizingRow[]>(techPack.sizingData || []);
+    const [costingData, setCostingData] = useState<CostingRow[]>(techPack.costingData || []);
+    const [placementData, setPlacementData] = useState<PlacementPin[]>(techPack.placementData || []);
+    const [bomData, setBomData] = useState<BOMRow[]>(techPack.bomData || []);
     
-    const [copyButtonText, setCopyButtonText] = useState('Copy Markdown');
+    // Migrate old BOM sections to dedicated BOM tab
+    useEffect(() => {
+        if (!techPack.bomData || techPack.bomData.length === 0) {
+            const bomSectionIndex = sections.findIndex(s => s.title.toLowerCase().includes('bill of materials') || s.title.toLowerCase() === 'bom');
+            if (bomSectionIndex !== -1) {
+                const bomSection = sections[bomSectionIndex];
+                const migratedBomData: BOMRow[] = bomSection.items.map(item => ({
+                    id: self.crypto.randomUUID(),
+                    placement: item.label,
+                    component: item.value,
+                    description: item.options.join(', ') || '',
+                    color: '',
+                    supplier: '',
+                    consumption: ''
+                }));
+                setBomData(migratedBomData);
+                
+                // Remove the BOM section from details
+                const newSections = [...sections];
+                newSections.splice(bomSectionIndex, 1);
+                setSections(newSections);
+            }
+        }
+    }, []);
+
+    // History Management
+    const [history, setHistory] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[]}[]>([]);
+    const [future, setFuture] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[]}[]>([]);
+    
+    // Dragging State
+    const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
+    const imageContainerRef = useRef<HTMLDivElement>(null);
+    const justFinishedDragRef = useRef(false);
+    
+    type TabType = 'details' | 'bom' | 'sizing' | 'costing' | 'placement';
+    const [activeTab, setActiveTab] = useState<TabType>('details');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+    const tabs: { id: TabType; label: string }[] = [
+        { id: 'details', label: 'Details' },
+        { id: 'bom', label: 'BOM' },
+        { id: 'sizing', label: 'Sizing' },
+        { id: 'costing', label: 'Costing' },
+        { id: 'placement', label: 'Placement' },
+    ];
 
     // Central update handler that pushes to history
-    const updateData = (newSections: TechPackSection[]) => {
-        setHistory([...history, sections]);
+    const updateData = (newSections: TechPackSection[], newSizingData: SizingRow[] = sizingData, newCostingData: CostingRow[] = costingData, newPlacementData: PlacementPin[] = placementData, newBomData: BOMRow[] = bomData) => {
+        setHistory([...history, { sections, sizingData, costingData, placementData, bomData }]);
         setFuture([]); // Clear future on new action
         setSections(newSections);
+        setSizingData(newSizingData);
+        setCostingData(newCostingData);
+        setPlacementData(newPlacementData);
+        setBomData(newBomData);
     };
 
     const handleUndo = () => {
@@ -233,8 +283,12 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         const previous = history[history.length - 1];
         const newHistory = history.slice(0, history.length - 1);
         
-        setFuture([sections, ...future]);
-        setSections(previous);
+        setFuture([{ sections, sizingData, costingData, placementData, bomData }, ...future]);
+        setSections(previous.sections);
+        setSizingData(previous.sizingData);
+        setCostingData(previous.costingData);
+        setPlacementData(previous.placementData);
+        setBomData(previous.bomData);
         setHistory(newHistory);
     };
 
@@ -244,8 +298,12 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         const next = future[0];
         const newFuture = future.slice(1);
 
-        setHistory([...history, sections]);
-        setSections(next);
+        setHistory([...history, { sections, sizingData, costingData, placementData, bomData }]);
+        setSections(next.sections);
+        setSizingData(next.sizingData);
+        setCostingData(next.costingData);
+        setPlacementData(next.placementData);
+        setBomData(next.bomData);
         setFuture(newFuture);
     };
 
@@ -271,29 +329,79 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         updateData(sections.filter(s => s.id !== sectionId));
     };
 
-    const formatAsMarkdown = () => {
-        let md = `# A-LINE AI Technical Pack\n\n`;
-        sections.forEach(section => {
-            md += `## ${section.title}\n`;
-            section.items.forEach(item => {
-                md += `- **${item.label}**: ${item.value}\n`;
-            });
-            md += `\n`;
-        });
-        return md;
-    };
-
-    const handleCopy = () => {
-        const md = formatAsMarkdown();
-        navigator.clipboard.writeText(md);
-        setCopyButtonText('Copied!');
-        setTimeout(() => setCopyButtonText('Copy Markdown'), 2000);
-    };
-    
     const handleSave = () => {
-        onSaveChanges(sections);
+        onSaveChanges(sections, sizingData, costingData, placementData, bomData);
         onClose();
     };
+
+    const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (activeTab !== 'placement') return;
+        if (justFinishedDragRef.current) {
+            justFinishedDragRef.current = false;
+            return;
+        }
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        const newPinNumber = placementData.length > 0 ? Math.max(...placementData.map(p => p.pinNumber)) + 1 : 1;
+        
+        const newPin: PlacementPin = {
+            id: self.crypto.randomUUID(),
+            pinNumber: newPinNumber,
+            x,
+            y,
+            title: 'New Pin',
+            note: ''
+        };
+        
+        updateData(sections, sizingData, costingData, [...placementData, newPin]);
+    };
+
+    const handlePinMouseDown = (e: React.MouseEvent, pinId: string) => {
+        if (activeTab !== 'placement') return;
+        e.stopPropagation();
+        setDraggingPinId(pinId);
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (draggingPinId && imageContainerRef.current) {
+                const rect = imageContainerRef.current.getBoundingClientRect();
+                let x = ((e.clientX - rect.left) / rect.width) * 100;
+                let y = ((e.clientY - rect.top) / rect.height) * 100;
+                
+                x = Math.max(0, Math.min(100, x));
+                y = Math.max(0, Math.min(100, y));
+
+                setPlacementData(prev => prev.map(p => p.id === draggingPinId ? { ...p, x, y } : p));
+            }
+        };
+
+        const handleMouseUp = () => {
+            if (draggingPinId) {
+                // Push to history when drag ends
+                setHistory(prev => [...prev, { sections, sizingData, costingData, placementData, bomData }]);
+                setFuture([]);
+                setDraggingPinId(null);
+                justFinishedDragRef.current = true;
+                setTimeout(() => {
+                    justFinishedDragRef.current = false;
+                }, 100);
+            }
+        };
+
+        if (draggingPinId) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [draggingPinId, sections, sizingData, costingData, placementData]);
 
     return (
         <div 
@@ -340,11 +448,44 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                         </button>
                     </div>
                 </div>
+
+                {/* Tab Navigation */}
+                <div className="flex space-x-6 border-b border-slate-700 mb-6 px-2 flex-shrink-0">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`pb-3 text-sm font-bold uppercase tracking-wider transition-colors border-b-2 ${
+                                activeTab === tab.id 
+                                    ? 'border-indigo-500 text-indigo-400' 
+                                    : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-600'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 overflow-hidden h-full">
                     <div className="md:col-span-4 flex flex-col items-center overflow-y-auto custom-scrollbar pr-2">
-                        <div className="bg-slate-800 rounded-xl p-2 w-full shadow-lg border border-slate-700">
-                             <img src={techPack.src} alt="Tech pack source image" className="w-full h-auto max-h-[50vh] object-contain rounded-lg" />
+                        <div className="bg-slate-800 rounded-xl p-2 w-full shadow-lg border border-slate-700 flex justify-center items-center">
+                            <div 
+                                ref={imageContainerRef}
+                                className={`relative inline-block ${activeTab === 'placement' ? 'cursor-crosshair' : ''}`} 
+                                onClick={handleImageClick}
+                            >
+                                <img src={techPack.src} alt="Tech pack source image" className="max-w-full h-auto max-h-[50vh] rounded-lg block pointer-events-none" />
+                                {activeTab === 'placement' && placementData.map(pin => (
+                                    <div 
+                                        key={pin.id} 
+                                        onMouseDown={(e) => handlePinMouseDown(e, pin.id)}
+                                        className={`absolute w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-white transform -translate-x-1/2 -translate-y-1/2 ${draggingPinId === pin.id ? 'cursor-grabbing scale-125' : 'cursor-grab hover:scale-110'} transition-transform`} 
+                                        style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                                    >
+                                        {pin.pinNumber}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                         <p className="text-xs text-slate-500 mt-2 text-center uppercase tracking-wider font-bold mb-4">Source Asset</p>
                         
@@ -374,28 +515,360 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
 
                     <div className="md:col-span-8 flex flex-col h-full overflow-hidden">
                         <div className="flex-grow overflow-y-auto custom-scrollbar pr-4 pb-20">
-                            {sections.length === 0 ? (
-                                <div className="text-center py-20 text-slate-500">No data available. Add a section to start.</div>
+                            {activeTab === 'details' ? (
+                                <>
+                                    {sections.length === 0 ? (
+                                        <div className="text-center py-20 text-slate-500">No data available. Add a section to start.</div>
+                                    ) : (
+                                        sections.map(section => (
+                                            <TechPackSectionRenderer 
+                                                key={section.id} 
+                                                section={section} 
+                                                onUpdateSection={handleUpdateSection}
+                                                onDeleteSection={() => handleDeleteSection(section.id)}
+                                            />
+                                        ))
+                                    )}
+                                    
+                                    <button 
+                                        onClick={handleAddSection}
+                                        className="w-full py-4 border-2 border-dashed border-slate-700 rounded-xl text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors font-bold flex items-center justify-center uppercase tracking-wide text-sm"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add New Section
+                                    </button>
+                                </>
+                            ) : activeTab === 'bom' ? (
+                                <div className="bg-slate-900/30 rounded-xl p-5 border border-white/5">
+                                    <h3 className="text-lg font-bold text-indigo-300 mb-4">Bill of Materials</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left text-slate-300">
+                                            <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
+                                                <tr>
+                                                    <th className="px-4 py-3 rounded-tl-lg">Placement</th>
+                                                    <th className="px-4 py-3">Component</th>
+                                                    <th className="px-4 py-3">Description</th>
+                                                    <th className="px-4 py-3">Color</th>
+                                                    <th className="px-4 py-3">Supplier</th>
+                                                    <th className="px-4 py-3">Consumption</th>
+                                                    <th className="px-4 py-3 rounded-tr-lg"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {bomData.map((row, index) => (
+                                                    <tr key={row.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.placement} onChange={(e) => { const newData = [...bomData]; newData[index].placement = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. Main Body" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.component} onChange={(e) => { const newData = [...bomData]; newData[index].component = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. Fabric" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.description} onChange={(e) => { const newData = [...bomData]; newData[index].description = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. 100% Cotton" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.color} onChange={(e) => { const newData = [...bomData]; newData[index].color = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. Navy" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.supplier} onChange={(e) => { const newData = [...bomData]; newData[index].supplier = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. Generic" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.consumption} onChange={(e) => { const newData = [...bomData]; newData[index].consumption = e.target.value; updateData(sections, sizingData, costingData, placementData, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" placeholder="e.g. 1.5m" />
+                                                        </td>
+                                                        <td className="px-2 py-2 text-right">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newData = bomData.filter(r => r.id !== row.id);
+                                                                    updateData(sections, sizingData, costingData, placementData, newData);
+                                                                }}
+                                                                className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                                                                title="Remove Row"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const newRow: BOMRow = { id: self.crypto.randomUUID(), placement: '', component: '', description: '', color: '', supplier: '', consumption: '' };
+                                            updateData(sections, sizingData, costingData, placementData, [...bomData, newRow]);
+                                        }}
+                                        className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-400 flex items-center transition-colors uppercase tracking-wide"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add BOM Row
+                                    </button>
+                                </div>
+                            ) : activeTab === 'sizing' ? (
+                                <div className="bg-slate-900/30 rounded-xl p-5 border border-white/5">
+                                    <h3 className="text-lg font-bold text-indigo-300 mb-4">Sizing Matrix</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left text-slate-300">
+                                            <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
+                                                <tr>
+                                                    <th className="px-4 py-3 rounded-tl-lg">Point of Measure</th>
+                                                    <th className="px-4 py-3">XS</th>
+                                                    <th className="px-4 py-3">S</th>
+                                                    <th className="px-4 py-3 bg-indigo-900/30 text-indigo-300">M (Base)</th>
+                                                    <th className="px-4 py-3">L</th>
+                                                    <th className="px-4 py-3">XL</th>
+                                                    <th className="px-4 py-3">XXL</th>
+                                                    <th className="px-4 py-3 rounded-tr-lg"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {sizingData.map((row, index) => (
+                                                    <tr key={row.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                                                        <td className="px-2 py-2">
+                                                            <input 
+                                                                type="text" 
+                                                                value={row.pointOfMeasure} 
+                                                                onChange={(e) => {
+                                                                    const newData = [...sizingData];
+                                                                    newData[index].pointOfMeasure = e.target.value;
+                                                                    updateData(sections, newData);
+                                                                }}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1"
+                                                                placeholder="e.g. Chest Width"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.xs} onChange={(e) => { const newData = [...sizingData]; newData[index].xs = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.s} onChange={(e) => { const newData = [...sizingData]; newData[index].s = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" />
+                                                        </td>
+                                                        <td className="px-2 py-2 bg-indigo-900/10">
+                                                            <input type="text" value={row.m} onChange={(e) => { const newData = [...sizingData]; newData[index].m = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1 font-medium text-indigo-200" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.l} onChange={(e) => { const newData = [...sizingData]; newData[index].l = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.xl} onChange={(e) => { const newData = [...sizingData]; newData[index].xl = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input type="text" value={row.xxl} onChange={(e) => { const newData = [...sizingData]; newData[index].xxl = e.target.value; updateData(sections, newData); }} className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" />
+                                                        </td>
+                                                        <td className="px-2 py-2 text-right">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newData = sizingData.filter(r => r.id !== row.id);
+                                                                    updateData(sections, newData);
+                                                                }}
+                                                                className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                                                                title="Remove Row"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const newRow: SizingRow = { id: self.crypto.randomUUID(), pointOfMeasure: '', xs: '', s: '', m: '', l: '', xl: '', xxl: '' };
+                                            updateData(sections, [...sizingData, newRow]);
+                                        }}
+                                        className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-400 flex items-center transition-colors uppercase tracking-wide"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add Measurement Row
+                                    </button>
+                                </div>
+                            ) : activeTab === 'costing' ? (
+                                <div className="bg-slate-900/30 rounded-xl p-5 border border-white/5">
+                                    <h3 className="text-lg font-bold text-indigo-300 mb-4">Automated Costing Engine</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left text-slate-300">
+                                            <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
+                                                <tr>
+                                                    <th className="px-4 py-3 rounded-tl-lg">Material Name</th>
+                                                    <th className="px-4 py-3">Consumption</th>
+                                                    <th className="px-4 py-3">Unit</th>
+                                                    <th className="px-4 py-3">Cost Per Unit (£)</th>
+                                                    <th className="px-4 py-3">Total Cost</th>
+                                                    <th className="px-4 py-3 rounded-tr-lg"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {costingData.map((row, index) => (
+                                                    <tr key={row.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                                                        <td className="px-2 py-2">
+                                                            <input 
+                                                                type="text" 
+                                                                value={row.materialName} 
+                                                                onChange={(e) => {
+                                                                    const newData = [...costingData];
+                                                                    newData[index].materialName = e.target.value;
+                                                                    updateData(sections, sizingData, newData);
+                                                                }}
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1"
+                                                                placeholder="e.g. Main Fabric"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input 
+                                                                type="number" 
+                                                                value={row.consumption} 
+                                                                onChange={(e) => { 
+                                                                    const newData = [...costingData]; 
+                                                                    newData[index].consumption = parseFloat(e.target.value) || 0; 
+                                                                    updateData(sections, sizingData, newData); 
+                                                                }} 
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" 
+                                                                step="0.01"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input 
+                                                                type="text" 
+                                                                value={row.unit} 
+                                                                onChange={(e) => { 
+                                                                    const newData = [...costingData]; 
+                                                                    newData[index].unit = e.target.value; 
+                                                                    updateData(sections, sizingData, newData); 
+                                                                }} 
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" 
+                                                                placeholder="e.g. meters"
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <input 
+                                                                type="number" 
+                                                                value={row.costPerUnit} 
+                                                                onChange={(e) => { 
+                                                                    const newData = [...costingData]; 
+                                                                    newData[index].costPerUnit = parseFloat(e.target.value) || 0; 
+                                                                    updateData(sections, sizingData, newData); 
+                                                                }} 
+                                                                className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 outline-none px-2 py-1" 
+                                                                step="0.01"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-2 font-medium text-slate-200">
+                                                            £{(row.consumption * row.costPerUnit).toFixed(2)}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-right">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newData = costingData.filter(r => r.id !== row.id);
+                                                                    updateData(sections, sizingData, newData);
+                                                                }}
+                                                                className="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded transition-colors"
+                                                                title="Remove Row"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                <tr className="border-t-2 border-slate-600 bg-slate-800/30">
+                                                    <td colSpan={4} className="px-4 py-4 text-right font-bold text-slate-300">
+                                                        Estimated Garment Cost:
+                                                    </td>
+                                                    <td colSpan={2} className="px-4 py-4 text-xl font-bold text-emerald-400">
+                                                        £{costingData.reduce((sum, row) => sum + (row.consumption * row.costPerUnit), 0).toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const newRow: CostingRow = { id: self.crypto.randomUUID(), materialName: '', consumption: 0, unit: '', costPerUnit: 0 };
+                                            updateData(sections, sizingData, [...costingData, newRow]);
+                                        }}
+                                        className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-400 flex items-center transition-colors uppercase tracking-wide"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add Item
+                                    </button>
+                                </div>
+                            ) : activeTab === 'placement' ? (
+                                <div className="bg-slate-900/30 rounded-xl p-5 border border-white/5 h-full flex flex-col">
+                                    <h3 className="text-lg font-bold text-indigo-300 mb-4">Interactive Placement Guide</h3>
+                                    <p className="text-sm text-slate-400 mb-6">Click on the source image to add a new placement pin. Edit details below.</p>
+                                    <div className="flex-grow overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                                        {placementData.length === 0 ? (
+                                            <div className="text-center py-10 text-slate-500">No placement pins added yet.</div>
+                                        ) : (
+                                            placementData.map((pin, index) => (
+                                                <div key={pin.id} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 relative group mt-4">
+                                                    <div className="absolute -left-3 -top-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg border-2 border-slate-800">
+                                                        {pin.pinNumber}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const newData = placementData.filter(p => p.id !== pin.id);
+                                                            updateData(sections, sizingData, costingData, newData);
+                                                        }}
+                                                        className="absolute top-2 right-2 p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Delete Pin"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                    <div className="ml-4 mt-1">
+                                                        <input 
+                                                            type="text" 
+                                                            value={pin.title} 
+                                                            onChange={(e) => {
+                                                                const newData = [...placementData];
+                                                                newData[index].title = e.target.value;
+                                                                updateData(sections, sizingData, costingData, newData);
+                                                            }}
+                                                            className="w-full bg-transparent text-white font-bold text-lg border-b border-transparent focus:border-indigo-500 outline-none mb-2 pb-1"
+                                                            placeholder="Feature Title (e.g., Rib Knit Collar)"
+                                                        />
+                                                        <textarea 
+                                                            value={pin.note} 
+                                                            onChange={(e) => {
+                                                                const newData = [...placementData];
+                                                                newData[index].note = e.target.value;
+                                                                updateData(sections, sizingData, costingData, newData);
+                                                            }}
+                                                            className="w-full bg-slate-900/50 text-slate-300 text-sm border border-slate-700 focus:border-indigo-500 rounded-lg outline-none p-3 min-h-[80px] resize-y"
+                                                            placeholder="Detailed construction note..."
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
-                                sections.map(section => (
-                                    <TechPackSectionRenderer 
-                                        key={section.id} 
-                                        section={section} 
-                                        onUpdateSection={handleUpdateSection}
-                                        onDeleteSection={() => handleDeleteSection(section.id)}
-                                    />
-                                ))
+                                <div className="flex items-center justify-center h-full min-h-[300px]">
+                                    <div className="text-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <p className="text-slate-400 text-lg font-medium">Module Coming Soon</p>
+                                        <p className="text-slate-500 text-sm mt-2">This feature is currently under development.</p>
+                                    </div>
+                                </div>
                             )}
-                            
-                            <button 
-                                onClick={handleAddSection}
-                                className="w-full py-4 border-2 border-dashed border-slate-700 rounded-xl text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-colors font-bold flex items-center justify-center uppercase tracking-wide text-sm"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Add New Section
-                            </button>
                         </div>
                         
                          <div className="flex items-center space-x-4 pt-4 border-t border-white/10 mt-auto bg-slate-950/80 z-10">
@@ -406,18 +879,30 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                 Save Changes
                             </button>
                             <button
-                                onClick={handleCopy}
+                                onClick={() => setIsExportModalOpen(true)}
                                 className="flex-1 px-4 py-3 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 transition-colors border border-slate-700 flex items-center justify-center"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                {copyButtonText}
+                                Export PDF
                             </button>
                          </div>
                     </div>
                 </div>
             </div>
+            
+            {isExportModalOpen && (
+                <PdfExportModal 
+                    techPack={techPack} 
+                    sections={sections} 
+                    sizingData={sizingData} 
+                    costingData={costingData} 
+                    placementData={placementData} 
+                    bomData={bomData}
+                    onClose={() => setIsExportModalOpen(false)} 
+                />
+            )}
         </div>
     );
 };

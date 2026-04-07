@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GalleryItem, ImageSource, GeneratedPattern } from '../types';
+import { getDisplaySrc,  GalleryItem, ImageSource, GeneratedPattern } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { fileToBase64 } from '../services/geminiService';
 import { Spinner } from './common/Spinner';
@@ -35,13 +35,13 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
     const handleBaseImageUpload = async (file: File) => {
         const imageSource = await fileToBase64(file);
         setBaseImage(imageSource);
-        setBaseImagePreview(`data:${imageSource.mimeType};base64,${imageSource.data}`);
+        setBaseImagePreview(getDisplaySrc(imageSource));
     };
     
     const handlePatternImageUpload = async (file: File) => {
         const imageSource = await fileToBase64(file);
         setPatternImage(imageSource);
-        setPatternImagePreview(`data:${imageSource.mimeType};base64,${imageSource.data}`);
+        setPatternImagePreview(getDisplaySrc(imageSource));
         setSelectedPatternId(null);
         setLocalPatterns([]);
     };

@@ -69,7 +69,7 @@ export const loadSession = (file: File): Promise<SessionData> => {
                     const recoveredCollection: Collection = {
                         id: recoveryId,
                         name: "Restored Session " + new Date().toLocaleTimeString(),
-                        masterMoodBoard: { data: "", mimeType: "image/png" }, // Placeholder, logic will handle missing image
+                        masterMoodBoard: { url: "" }, // Placeholder, logic will handle missing image
                         extractedPalette: ['#000000', '#333333', '#666666', '#999999', '#CCCCCC'],
                         styleDna: "Restored from saved session file.",
                         created: Date.now()

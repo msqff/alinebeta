@@ -1,13 +1,74 @@
-import { GoogleGenAI, GenerateContentResponse, Modality, Type } from "@google/genai";
-import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin } from '../types';
+import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
+import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
 
-const getAI = () => {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const uploadBase64 = async (base64: string, mimeType: string): Promise<string> => {
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64: dataUrl })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Upload failed');
+    return data.url;
 };
 
-const extractImageOrThrow = (response: GenerateContentResponse, context: string = "API"): ImageSource => {
+export const fileToBase64 = async (file: File): Promise<ImageSource> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const result = reader.result as string;
+      const data = result.split(',')[1];
+      try {
+          const url = await uploadBase64(data, file.type);
+          resolve({ url });
+      } catch (e) {
+          reject(e);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+const getAI = () => {
+    return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy-key" });
+};
+
+const getUrlAsBase64 = async (url: string): Promise<{ data: string, mimeType: string }> => {
+    if (url.startsWith('data:')) {
+        const matches = url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+            return { mimeType: matches[1], data: matches[2] };
+        }
+    }
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            const data = result.split(',')[1];
+            resolve({ data, mimeType: blob.type });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
+const getImageData = async (image: ImageSource): Promise<{ data: string, mimeType: string }> => {
+    if (image.data && image.mimeType) {
+        return { data: image.data, mimeType: image.mimeType };
+    }
+    if (image.url) {
+        return await getUrlAsBase64(image.url);
+    }
+    throw new Error("Image source missing URL and data");
+};
+
+const extractImageOrThrow = (response: GenerateContentResponse, context: string = "API"): { data: string, mimeType: string } => {
     const candidate = response.candidates?.[0];
-    const imagePart = candidate?.content?.parts.find(part => part.inlineData);
+    const imagePart = candidate?.content?.parts?.find(part => part.inlineData);
     
     if (imagePart && imagePart.inlineData) {
         return {
@@ -16,10 +77,8 @@ const extractImageOrThrow = (response: GenerateContentResponse, context: string 
         };
     }
 
-    // If no image, check for text to provide a better error
-    const textPart = candidate?.content?.parts.find(part => part.text);
+    const textPart = candidate?.content?.parts?.find(part => part.text);
     if (textPart && textPart.text) {
-        // Clean up the text a bit for the error message
         const reason = textPart.text.trim();
         throw new Error(`${context} returned text instead of image: "${reason.length > 100 ? reason.substring(0, 100) + '...' : reason}"`);
     }
@@ -27,33 +86,8 @@ const extractImageOrThrow = (response: GenerateContentResponse, context: string 
     throw new Error(`${context} did not return an image or text explanation.`);
 };
 
-export const fileToBase64 = (file: File): Promise<ImageSource> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      const data = result.split(',')[1];
-      resolve({ data, mimeType: file.type });
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-export const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onload = () => {
-      const result = reader.result as string;
-      const data = result.split(',')[1];
-      resolve(data);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
 export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ styleDna: string, palette: string[] }> => {
+    const localImage = await getImageData(image);
     const ai = getAI();
     const prompt = `Analyze this mood board image to extract the "Style DNA" and "Color Palette" for a new fashion collection.
     
@@ -67,28 +101,17 @@ export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ sty
     }`;
 
     const parts = [
-        { inlineData: { data: image.data, mimeType: image.mimeType } },
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
         { text: prompt },
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts },
         config: { responseMimeType: 'application/json' }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Failed to analyze collection.");
-    
-    try {
-        const json = JSON.parse(text);
-        return {
-            styleDna: json.styleDna,
-            palette: json.palette
-        };
-    } catch (e) {
-        throw new Error("Invalid JSON from collection analysis.");
-    }
+    return JSON.parse(response.text || '{}');
 };
 
 export const generateItemSuggestions = async (
@@ -100,7 +123,7 @@ export const generateItemSuggestions = async (
     const prompt = `Act as a Senior Fashion Merchandiser planning a collection named "${collectionName}".
     
     Style DNA: "${styleDna}"
-    ${existingItems.length > 0 ? `Current Line Sheet contains: ${existingItems.join(', ')}.` : 'This is a new collection.'}
+    ${existingItems && existingItems.length > 0 ? `Current Line Sheet contains: ${existingItems.join(', ')}.` : 'This is a new collection.'}
     
     Task: Suggest 3 specific fashion items to add to this collection.
     
@@ -111,65 +134,53 @@ export const generateItemSuggestions = async (
     
     Return JSON array:
     [
-        { "name": "Item Name", "reasoning": "Brief reason why this fits" },
-        ...
+        { "name": "Item Name", "reasoning": "Brief reason why this fits" }
     ]`;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts: [{ text: prompt }] },
         config: { responseMimeType: 'application/json' }
     });
 
-    const text = response.text;
-    if (!text) return [];
-
-    try {
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("Failed to parse item suggestions", e);
-        return [];
-    }
+    return JSON.parse(response.text || '[]');
 };
 
 export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: string): Promise<{ summary: string; sketches: ImageSource[] }> => {
+    const localImages = await Promise.all(images.map(img => getImageData(img)));
     const ai = getAI();
-    // 1. Generate Summary
+    
     const summaryPrompt = "Analyze the attached images which form a fashion mood board. Provide a summary of the core themes, a suggested color palette (using common color names), key silhouettes, and potential fabrics. Format this as a concise but detailed report with clear headings for each section (e.g., ## Core Themes, ## Color Palette). The tone should be professional and insightful for a fashion designer.";
     
     const summaryParts = [
-        ...images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
+        ...localImages.map((img: any) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
         { text: summaryPrompt },
     ];
 
     const summaryResponse = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts: summaryParts },
     });
-    const summary = summaryResponse.text;
-    if (!summary) {
-        throw new Error("API did not return a summary.");
-    }
+    const summary = summaryResponse.text || '';
 
-    // 2. Generate Sketches
     const baseSketchPrompt = "Inspired by the aesthetic of the attached mood board images, generate a minimalist black and white fashion flat sketch of a cohesive";
     const promptAddition = userPrompt ? ` ${userPrompt}` : ' garment';
     const sketchPrompt = `${baseSketchPrompt}${promptAddition}. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
     
     const sketchParts = [
-        ...images.map(img => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
+        ...localImages.map((img: any) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
         { text: sketchPrompt },
     ];
 
-    const generateSingleSketch = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleSketch = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: sketchParts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Sketch Generator");
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const sketchPromises = Array(4).fill(null).map(() => generateSingleSketch());
@@ -189,15 +200,15 @@ export const generateSketches = async (prompt: string, context?: { styleDna: str
 
     const parts = [{ text: fullPrompt }];
 
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Sketch Generator");
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
@@ -210,15 +221,15 @@ export const generatePattern = async (prompt: string): Promise<ImageSource[]> =>
     
     const parts = [{ text: fullPrompt }];
 
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Pattern Generator");
+        const imgData = extractImageOrThrow(response, "Pattern Generator");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
@@ -227,64 +238,70 @@ export const generatePattern = async (prompt: string): Promise<ImageSource[]> =>
 
 export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource): Promise<ImageSource[]> => {
     const ai = getAI();
+    const localBase = await getImageData(baseImage);
     let textPrompt: string;
-    const parts: any[] = [{ inlineData: { data: baseImage.data, mimeType: baseImage.mimeType } }];
+    const parts: any[] = [{ inlineData: { data: localBase.data, mimeType: localBase.mimeType } }];
 
     if (maskImage) {
+        const localMask = await getImageData(maskImage);
         textPrompt = `Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "${prompt}". The output must remain a minimalist black and white flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`;
-        parts.push({ inlineData: { data: maskImage.data, mimeType: maskImage.mimeType } });
+        parts.push({ inlineData: { data: localMask.data, mimeType: localMask.mimeType } });
     } else {
         textPrompt = `Based on the provided fashion flat sketch, generate a new version with the following modification: "${prompt}". The output must strictly be a minimalist black and white fashion flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`;
     }
     
     parts.push({ text: textPrompt });
 
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Sketch Editor");
+        const imgData = extractImageOrThrow(response, "Sketch Editor");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
-}
+};
 
 export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource): Promise<ImageSource[]> => {
     const ai = getAI();
+    const localBase = await getImageData(baseImage);
     let textPrompt: string;
-    const parts: any[] = [{ inlineData: { data: baseImage.data, mimeType: baseImage.mimeType } }];
+    const parts: any[] = [{ inlineData: { data: localBase.data, mimeType: localBase.mimeType } }];
 
     if (maskImage) {
+        const localMask = await getImageData(maskImage);
         textPrompt = `Based on the provided product image and the mask, apply this change ONLY to the masked area: "${prompt}". The output must remain a photorealistic studio product shot. Maintain the style of the original: professional lighting, neutral background, and realistic textures.`;
-        parts.push({ inlineData: { data: maskImage.data, mimeType: maskImage.mimeType } });
+        parts.push({ inlineData: { data: localMask.data, mimeType: localMask.mimeType } });
     } else {
         textPrompt = `Based on the provided photorealistic product image, generate a new version with the following modification: "${prompt}". Ensure the output is a hyper-realistic photograph of a real physical garment, avoiding any digital mock-up look. Focus on realistic fabric texture and lighting. Please provide a distinct visual variation.`;
     }
     
     parts.push({ text: textPrompt });
 
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Image Editor");
+        const imgData = extractImageOrThrow(response, "Image Editor");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
-}
+};
 
 export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
+    const localBase = await getImageData(baseImage);
+    
     let textPrompt = `Transform the provided sketch into a hyper-realistic, true-to-life photograph of a real physical garment. The result must be indistinguishable from a high-end studio photo of a manufactured product. Strictly avoid any illustrative, painterly, or digital-art styles. Focus on tangible fabric textures (weave, sheen, weight), realistic draping, and precise construction details (seams, hems). Display on a neutral background. Specific design details: "${prompt}".`;
 
     if (context) {
@@ -293,23 +310,24 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
     }
 
     const parts: any[] = [
-        { inlineData: { data: baseImage.data, mimeType: baseImage.mimeType } },
+        { inlineData: { data: localBase.data, mimeType: localBase.mimeType } },
         { text: textPrompt },
     ];
 
     if (patternImage) {
-        parts.splice(1, 0, { inlineData: { data: patternImage.data, mimeType: patternImage.mimeType } });
+        const localPattern = await getImageData(patternImage);
+        parts.splice(1, 0, { inlineData: { data: localPattern.data, mimeType: localPattern.mimeType } });
     }
     
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Product Visualiser");
+        const imgData = extractImageOrThrow(response, "Product Visualiser");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     }
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
@@ -318,22 +336,23 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
 
 export const placeOnModel = async (productImage: ImageSource, prompt: string): Promise<ImageSource[]> => {
     const ai = getAI();
+    const localProduct = await getImageData(productImage);
     const textPrompt = `Realistically place the garment from the provided image onto a photorealistic model. The model's pose and camera angle should be: "${prompt}". The background should be a simple studio or neutral setting. The final image should be a full-body shot. Ensure the garment's draping, folds, and fit look natural for the specified pose and the lighting on the model and garment is consistent. Please provide a distinct visual variation.`;
     
     const parts = [
-        { inlineData: { data: productImage.data, mimeType: productImage.mimeType } },
+        { inlineData: { data: localProduct.data, mimeType: localProduct.mimeType } },
         { text: textPrompt },
     ];
     
-    const generateSingleImage = async (): Promise<ImageSource> => {
-        const response: GenerateContentResponse = await ai.models.generateContent({
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
-        return extractImageOrThrow(response, "Model Placement");
+        const imgData = extractImageOrThrow(response, "Model Placement");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
     };
 
     const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
@@ -342,8 +361,9 @@ export const placeOnModel = async (productImage: ImageSource, prompt: string): P
 
 export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate: string[]): Promise<{ view: string, image: ImageSource }[]> => {
     const ai = getAI();
+    const localBase = await getImageData(baseImage);
     
-    const generateView = async (viewType: string): Promise<{ view: string, image: ImageSource }> => {
+    const generateView = async (viewType: string) => {
         let prompt = "";
         switch (viewType) {
             case 'Back':
@@ -361,60 +381,33 @@ export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate
         }
 
         const parts = [
-            { inlineData: { data: baseImage.data, mimeType: baseImage.mimeType } },
+            { inlineData: { data: localBase.data, mimeType: localBase.mimeType } },
             { text: prompt },
         ];
 
-        const response: GenerateContentResponse = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
 
-        const image = extractImageOrThrow(response, `Multi-View (${viewType})`);
-        
+        const imgData = extractImageOrThrow(response, `Multi-View (${viewType})`);
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
         return {
             view: viewType,
-            image: image
+            image: { url }
         };
     };
 
-    const promises = viewsToGenerate.map(view => generateView(view));
-    const results = await Promise.all(promises);
-    return results;
+    const promises = viewsToGenerate.map((view: string) => generateView(view));
+    return Promise.all(promises);
 };
-
-export const generateVideo = async (baseImage: ImageSource, prompt: string) => {
-    const ai = getAI();
-    const operation = await ai.models.generateVideos({
-      model: 'veo-3.1-fast-generate-preview',
-      prompt: prompt,
-      image: {
-        imageBytes: baseImage.data,
-        mimeType: baseImage.mimeType,
-      },
-      config: {
-        numberOfVideos: 1,
-        resolution: '720p',
-        aspectRatio: '16:9'
-      }
-    });
-    return operation;
-}
-
-export const checkVideoOperation = async (operation: any) => {
-    const ai = getAI();
-    const updatedOperation = await ai.operations.getVideosOperation({ operation: operation });
-    return updatedOperation;
-}
 
 export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = []): Promise<{ sections: TechPackSection[], bomData: BOMRow[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[] }> => {
     const ai = getAI();
+    const localImage = await getImageData(image);
     
-    // Use gemini-flash-lite-latest for maximum speed on structured data extraction
-    const prompt = `Analyze the provided garment image${additionalImages.length > 0 ? 's (including front and additional views)' : ''} and generate a structured Technical Pack JSON object.
+    const prompt = `Analyze the provided garment image${additionalImages && additionalImages.length > 0 ? 's (including front and additional views)' : ''} and generate a structured Technical Pack JSON object.
     
     The JSON must strictly follow this structure:
     {
@@ -471,7 +464,7 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
     }
 
     Required Sections:
-    1. Garment Features (Detail fits, cuts, and finishings${additionalImages.length > 0 ? ' as seen from all angles' : ''})
+    1. Garment Features (Detail fits, cuts, and finishings${additionalImages && additionalImages.length > 0 ? ' as seen from all angles' : ''})
     2. Suggested Materials
     3. Construction Notes (Seams, stitching, hem type)
 
@@ -508,21 +501,24 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
     Output ONLY valid JSON. No markdown formatting.`;
 
     const parts: any[] = [
-        { inlineData: { data: image.data, mimeType: image.mimeType } },
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
     ];
 
-    additionalImages.forEach(img => {
-        parts.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
-    });
+    if (additionalImages) {
+        for (const img of additionalImages) {
+            const localAdd = await getImageData(img);
+            parts.push({ inlineData: { data: localAdd.data, mimeType: localAdd.mimeType } });
+        }
+    }
 
     parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts },
         config: {
             responseMimeType: 'application/json',
-            thinkingConfig: { thinkingBudget: 0 } // Disable thinking to minimize latency
+            thinkingConfig: { thinkingBudget: 0 }
         }
     });
 
@@ -536,62 +532,14 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
         throw new Error("Failed to parse JSON from model response.");
     }
 
-    try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const sectionsWithIds: TechPackSection[] = parsed.sections.map((section: any) => ({
-            id: self.crypto.randomUUID(),
-            title: section.title,
-            items: section.items.map((item: any) => ({
-                id: self.crypto.randomUUID(),
-                label: item.label,
-                value: item.value,
-                options: item.options || []
-            }))
-        }));
-        
-        const bomDataWithIds: BOMRow[] = (parsed.bomData || []).map((row: any) => ({
-            ...row,
-            id: self.crypto.randomUUID()
-        }));
-
-        const sizingDataWithIds: SizingRow[] = (parsed.sizingData || []).map((row: any) => ({
-            id: self.crypto.randomUUID(),
-            pointOfMeasure: row.pointOfMeasure || '',
-            xs: row.xs || '',
-            s: row.s || '',
-            m: row.m || '',
-            l: row.l || '',
-            xl: row.xl || '',
-            xxl: row.xxl || ''
-        }));
-        
-        const costingDataWithIds: CostingRow[] = (parsed.costingData || []).map((row: any) => ({
-            id: self.crypto.randomUUID(),
-            materialName: row.materialName || '',
-            consumption: Number(row.consumption) || 0,
-            unit: row.unit || '',
-            costPerUnit: Number(row.costPerUnit) || 0
-        }));
-        
-        const placementDataWithIds: PlacementPin[] = (parsed.placementData || []).map((row: any) => ({
-            id: self.crypto.randomUUID(),
-            pinNumber: Number(row.pinNumber) || 0,
-            x: Number(row.x) || 0,
-            y: Number(row.y) || 0,
-            title: row.title || '',
-            note: row.note || ''
-        }));
-        
-        return { sections: sectionsWithIds, bomData: bomDataWithIds, sizingData: sizingDataWithIds, costingData: costingDataWithIds, placementData: placementDataWithIds };
-    } catch (e) {
-        console.error("Failed to parse Tech Pack JSON", e);
-        throw new Error("Failed to generate structured Tech Pack.");
-    }
+    return JSON.parse(jsonMatch[0]);
 };
 
 export const generateProductReview = async (image: ImageSource, additionalImages: ImageSource[] = [], techPack?: TechPackSection[]): Promise<ProductReviewResult> => {
     const ai = getAI();
-    const prompt = `Act as a strictly critical Risk Compliance Officer (IP & Safety) and a Senior Production Manager. Conduct a harsh, uncompromising audit of the attached fashion design${additionalImages.length > 0 ? ' (examining all provided angles/views)' : ''}.
+    const localImage = await getImageData(image);
+    
+    const prompt = `Act as a strictly critical Risk Compliance Officer (IP & Safety) and a Senior Production Manager. Conduct a harsh, uncompromising audit of the attached fashion design${additionalImages && additionalImages.length > 0 ? ' (examining all provided angles/views)' : ''}.
 
     1. Legal Audit: Scrutinize for ANY resemblance to known trademarks, logos, iconic trade dress (e.g., Adidas stripes, Burberry check, Gucci horsebit, Nike swoosh), or copyright protected artwork/characters. Be extremely conservative; if it looks even slightly familiar or derivative, FLAG IT as a risk.
     2. Safety Audit: Rigorously identify potential physical hazards.
@@ -623,21 +571,22 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     Output ONLY valid JSON.`;
 
     const parts: any[] = [
-        { inlineData: { data: image.data, mimeType: image.mimeType } },
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
     ];
     
-    additionalImages.forEach(img => {
-         parts.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
-    });
+    if (additionalImages) {
+        for (const img of additionalImages) {
+            const localAdd = await getImageData(img);
+            parts.push({ inlineData: { data: localAdd.data, mimeType: localAdd.mimeType } });
+        }
+    }
 
     parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts },
-        config: {
-            responseMimeType: 'application/json'
-        }
+        config: { responseMimeType: 'application/json' }
     });
 
     const text = response.text;
@@ -646,17 +595,14 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Failed to parse JSON");
 
-    try {
-        return JSON.parse(jsonMatch[0]) as ProductReviewResult;
-    } catch (e) {
-        throw new Error("Invalid JSON structure returned");
-    }
+    return JSON.parse(jsonMatch[0]);
 };
 
 export const generateShopperPulse = async (image: ImageSource, price: number, persona: ShopperPersona): Promise<ShopperPulseResult> => {
     const ai = getAI();
+    const localImage = await getImageData(image);
     
-    const personaDetails = {
+    const personaDetails: Record<string, string> = {
         'The Value Seeker': 'A budget-conscious shopper looking for the best deal. Skeptical of high prices unless quality is obvious. Loves a bargain.',
         'The Quality Conscious': 'Prioritizes material composition, longevity, and finish. Willing to pay more but hates "fast fashion" poor construction. Critical.',
         'The Trend Hunter': 'Obsessed with what is currently "in". Will pay for the "look" but will reject it if it looks dated or like a cheap knock-off.'
@@ -681,16 +627,14 @@ export const generateShopperPulse = async (image: ImageSource, price: number, pe
     }`;
 
     const parts = [
-        { inlineData: { data: image.data, mimeType: image.mimeType } },
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
         { text: prompt },
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: 'gemini-3.1-flash-lite-preview',
         contents: { parts },
-        config: {
-            responseMimeType: 'application/json'
-        }
+        config: { responseMimeType: 'application/json' }
     });
 
     const text = response.text;
@@ -699,9 +643,5 @@ export const generateShopperPulse = async (image: ImageSource, price: number, pe
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Failed to parse JSON");
 
-    try {
-        return JSON.parse(jsonMatch[0]) as ShopperPulseResult;
-    } catch (e) {
-        throw new Error("Invalid JSON structure returned");
-    }
+    return JSON.parse(jsonMatch[0]);
 }

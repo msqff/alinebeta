@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GalleryItem, GalleryAsset, MoodBoardAsset, TechPackAsset, VideoItem, MultiViewAsset } from '../types';
+import { getDisplaySrc,  GalleryItem, GalleryAsset, MoodBoardAsset, TechPackAsset, MultiViewAsset } from '../types';
 
 interface TraceabilityModalProps {
     startItem: GalleryAsset;
@@ -25,7 +25,6 @@ const tagColor: { [key in GalleryAsset['tag']]: string } = {
     'Studio Image': 'bg-purple-500',
     'Model Shot': 'bg-green-500',
     'Mood Board': 'bg-amber-500',
-    'Video': 'bg-red-500',
     'Tech Pack': 'bg-cyan-500',
     'Product Review': 'bg-emerald-500',
     'Multi-View': 'bg-orange-500',
@@ -67,7 +66,7 @@ const MoodBoardNode: React.FC<{item: MoodBoardAsset}> = ({ item }) => (
             {item.sources.slice(0, 4).map((source, index) => (
                 <img
                     key={index}
-                    src={`data:${source.mimeType};base64,${source.data}`}
+                    src={getDisplaySrc(source)}
                     className="w-full h-full object-cover rounded-md"
                     alt={`Mood board image ${index + 1}`}
                 />
@@ -92,7 +91,7 @@ const MultiViewNode: React.FC<{item: MultiViewAsset, onClick?: () => void}> = ({
                 {item.views.slice(0, 4).map((view, i) => (
                     <img 
                         key={i} 
-                        src={`data:${view.source.mimeType};base64,${view.source.data}`} 
+                        src={getDisplaySrc(view.source)} 
                         className="w-full h-full object-cover" 
                         alt={view.view} 
                     />
@@ -102,24 +101,6 @@ const MultiViewNode: React.FC<{item: MultiViewAsset, onClick?: () => void}> = ({
          <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white ${tagColor[item.tag]}`}>{item.tag}</span>
     </div>
 )
-
-const VideoNode: React.FC<{item: VideoItem, onClick?: () => void}> = ({ item, onClick }) => (
-     <div
-        className={`flex flex-col items-center flex-shrink-0 text-center w-40 ${onClick ? 'cursor-pointer' : ''}`}
-        onClick={onClick}
-    >
-        <div className={`relative group w-40 h-52 rounded-xl overflow-hidden border-2 mb-3 transition-all shadow-lg ${onClick ? 'border-slate-700 hover:border-indigo-500 hover:scale-105' : 'border-slate-700'}`}>
-            <img src={item.thumbnailSrc} alt={item.prompt} className="w-full h-full object-cover" />
-             <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white drop-shadow-lg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                </svg>
-            </div>
-        </div>
-        <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white ${tagColor[item.tag]}`}>{item.tag}</span>
-    </div>
-);
-
 
 export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem, allItems, onClose, onSelectItem }) => {
     const [lineage, setLineage] = useState<GalleryAsset[]>([]);
@@ -169,8 +150,6 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
                         <React.Fragment key={item.id}>
                            {item.tag === 'Mood Board' ? (
                                 <MoodBoardNode item={item as MoodBoardAsset} />
-                           ) : item.tag === 'Video' ? (
-                                <VideoNode item={item as VideoItem} onClick={() => onSelectItem(item)} />
                            ) : item.tag === 'Multi-View' ? (
                                 <MultiViewNode item={item as MultiViewAsset} onClick={() => onSelectItem(item)} />
                            ) : (

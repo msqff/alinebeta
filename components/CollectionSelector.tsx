@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Collection, ImageSource } from '../types';
+import { getDisplaySrc,  Collection, ImageSource } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { analyzeCollectionIntake, fileToBase64, generateItemSuggestions } from '../services/geminiService';
 import { Spinner } from './common/Spinner';
@@ -31,7 +31,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
         try {
             const source = await fileToBase64(files[0]);
             setMoodBoard(source);
-            setMoodBoardPreview(`data:${source.mimeType};base64,${source.data}`);
+            setMoodBoardPreview(getDisplaySrc(source));
             
             // Analyze immediately
             const analysis = await analyzeCollectionIntake(source);
@@ -248,7 +248,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
                         className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700 hover:border-indigo-500 cursor-pointer shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 bg-slate-900"
                     >
                         <img 
-                            src={`data:${collection.masterMoodBoard.mimeType};base64,${collection.masterMoodBoard.data}`} 
+                            src={getDisplaySrc(collection.masterMoodBoard)} 
                             alt={collection.name}
                             className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                         />

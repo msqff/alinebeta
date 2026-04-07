@@ -1,5 +1,5 @@
 import React from 'react';
-import { MultiViewAsset } from '../types';
+import { getDisplaySrc,  MultiViewAsset } from '../types';
 
 interface MultiViewModalProps {
     asset: MultiViewAsset;
@@ -40,7 +40,7 @@ export const MultiViewModal: React.FC<MultiViewModalProps> = ({ asset, onClose }
                 <div className="flex-grow overflow-y-auto custom-scrollbar p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {asset.views.map((viewItem, index) => {
-                            const src = `data:${viewItem.source.mimeType};base64,${viewItem.source.data}`;
+                            const src = getDisplaySrc(viewItem.source);
                             return (
                                 <div key={index} className="bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-xl group relative">
                                     <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 z-10">

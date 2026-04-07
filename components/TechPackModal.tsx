@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TechPackAsset, TechPackSection, TechPackItem, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
+import { getDisplaySrc,  TechPackAsset, TechPackSection, TechPackItem, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
 import { PdfExportModal } from './PdfExportModal';
 
 interface TechPackModalProps {
@@ -257,6 +257,7 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
     type TabType = 'details' | 'bom' | 'sizing' | 'costing' | 'placement';
     const [activeTab, setActiveTab] = useState<TabType>('details');
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false);
 
     const tabs: { id: TabType; label: string }[] = [
         { id: 'details', label: 'Details' },
@@ -409,8 +410,12 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
             onClick={onClose}
         >
             <div 
-                className="glass-panel rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 w-full max-w-5xl m-4 flex flex-col animate-fade-in"
-                style={{maxHeight: '90vh'}}
+                className={`glass-panel rounded-2xl shadow-2xl border border-slate-700 p-6 md:p-8 flex flex-col animate-fade-in transition-all duration-300 ${
+                    isMaximized 
+                        ? 'w-[98vw] h-[98vh] max-w-none m-2' 
+                        : 'w-full max-w-5xl m-4'
+                }`}
+                style={{maxHeight: isMaximized ? '98vh' : '90vh'}}
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-6 flex-shrink-0 border-b border-white/10 pb-4">
@@ -441,7 +446,18 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                 </svg>
                             </button>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white">
+                        <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white" title={isMaximized ? "Restore" : "Maximize"}>
+                            {isMaximized ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4v4m0 0H4m4 0L3 3m13 1v4m0 0h4m-4 0l5-5m-5 13v-4m0 0h4m-4 0l5 5M8 20v-4m0 0H4m4 0l-5 5" />
+                                </svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                            )}
+                        </button>
+                        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white" title="Close">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -495,7 +511,7 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                 <div className="grid grid-cols-2 gap-2">
                                     {techPack.additionalSources.map((source, idx) => (
                                         <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                                            <img src={`data:${source.mimeType};base64,${source.data}`} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
+                                            <img src={getDisplaySrc(source)} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
                                         </div>
                                     ))}
                                 </div>

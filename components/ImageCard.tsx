@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { GalleryAsset, MoodBoardAsset, TechPackAsset, VideoItem, GalleryItem, ProductReviewAsset, MultiViewAsset } from '../types';
+import { getDisplaySrc,  GalleryAsset, MoodBoardAsset, TechPackAsset, GalleryItem, ProductReviewAsset, MultiViewAsset } from '../types';
 
 interface ImageCardProps {
     item: GalleryAsset;
@@ -21,7 +21,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
         'Sketch': 'bg-blue-500',
         'Studio Image': 'bg-purple-500',
         'Model Shot': 'bg-green-500',
-        'Video': 'bg-red-500',
         'Mood Board': 'bg-amber-500',
         'Tech Pack': 'bg-cyan-500',
         'Product Review': 'bg-emerald-500',
@@ -33,7 +32,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
         action();
     };
 
-    const isVideo = item.tag === 'Video';
     const isMoodBoard = item.tag === 'Mood Board';
     const isTechPack = item.tag === 'Tech Pack';
     const isReview = item.tag === 'Product Review';
@@ -42,11 +40,8 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
     let imageSrc: string | undefined;
     let promptText: string | undefined;
 
-    if (isVideo) {
-        imageSrc = (item as VideoItem).thumbnailSrc;
-        promptText = item.prompt;
-    } else if (isMoodBoard) {
-        imageSrc = `data:${(item as MoodBoardAsset).sources[0].mimeType};base64,${(item as MoodBoardAsset).sources[0].data}`;
+    if (isMoodBoard) {
+        imageSrc = getDisplaySrc((item as MoodBoardAsset).sources[0]);
     } else if (isTechPack) {
         imageSrc = (item as TechPackAsset).src;
     } else if (isReview) {
@@ -61,7 +56,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
     const canShowTraceability = 'parentId' in item && !!item.parentId;
     const canEdit = (item.tag === 'Sketch' || item.tag === 'Studio Image') && galleryType === 'ideation';
     const canGenerateTechPack = item.tag === 'Studio Image' && galleryType === 'finals';
-    const canReview = galleryType === 'finals' && !isMoodBoard && !isTechPack && !isVideo && !isReview && !isMultiView;
+    const canReview = galleryType === 'finals' && !isMoodBoard && !isTechPack && !isReview && !isMultiView;
     const canShopperPulse = galleryType === 'finals' && (item.tag === 'Studio Image' || item.tag === 'Model Shot');
     const canPromote = galleryType === 'ideation';
     const canDemote = galleryType === 'finals';
@@ -76,7 +71,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
                     {(item as MultiViewAsset).views.slice(0, 4).map((view, i) => (
                         <img 
                             key={i} 
-                            src={`data:${view.source.mimeType};base64,${view.source.data}`} 
+                            src={getDisplaySrc(view.source)} 
                             className="w-full h-full object-cover" 
                             alt={view.view} 
                         />
@@ -87,13 +82,6 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
             )}
 
             <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center">
-                 {isVideo && (
-                    <div className="text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        </svg>
-                    </div>
-                 )}
                  {isTechPack && (
                     <div className="text-white text-center p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ItemSlot, GalleryAsset, Collection } from '../types';
+import { ItemSlot, GalleryAsset, Collection, getDisplaySrc } from '../types';
 import { generateItemSuggestions } from '../services/geminiService';
 
 interface ItemManagerProps {
@@ -44,18 +44,15 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
     // Helper to find asset by ID
     const getAsset = (id?: string) => assets.find(a => a.id === id);
 
-    const getDisplaySrc = (asset: GalleryAsset): string => {
+    const getAssetDisplaySrc = (asset: GalleryAsset): string => {
         if ('src' in asset) {
             return asset.src;
         }
-        if (asset.tag === 'Video') {
-            return asset.thumbnailSrc;
-        }
         if (asset.tag === 'Mood Board' && asset.sources.length > 0) {
-             return `data:${asset.sources[0].mimeType};base64,${asset.sources[0].data}`;
+             return getDisplaySrc(asset.sources[0]);
         }
         if (asset.tag === 'Multi-View' && asset.views.length > 0) {
-             return `data:${asset.views[0].source.mimeType};base64,${asset.views[0].source.data}`;
+             return getDisplaySrc(asset.views[0].source);
         }
         return '';
     }
@@ -144,7 +141,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                 className={`aspect-[3/4] mb-3 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full ${heroAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
                             >
                                 {heroAsset ? (
-                                    <img src={getDisplaySrc(heroAsset)} alt={slot.name} className="w-full h-full object-cover" />
+                                    <img src={getAssetDisplaySrc(heroAsset)} alt={slot.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
@@ -167,7 +164,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                     title={sketch ? "View Sketch" : "Generate Sketch"}
                                 >
                                     {sketch ? (
-                                        <img src={getDisplaySrc(sketch)} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Sketch" />
+                                        <img src={getAssetDisplaySrc(sketch)} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Sketch" />
                                     ) : (
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
                                     )}
@@ -180,7 +177,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                     title={studio ? "View Render" : "Visualise Product"}
                                 >
                                      {studio ? (
-                                        <img src={getDisplaySrc(studio)} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Render" />
+                                        <img src={getAssetDisplaySrc(studio)} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Render" />
                                     ) : (
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                     )}

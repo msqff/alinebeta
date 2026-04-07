@@ -8,7 +8,6 @@ import { ProductVisualiser } from './components/ProductVisualizer';
 import { ModelPlacement } from './components/ModelPlacement';
 import { SketchEditor } from './components/SketchEditor';
 import { StudioImageEditor } from './components/StudioImageEditor';
-import { VideoGenerator } from './components/VideoGenerator';
 import { MoodBoardAnalyst } from './components/MoodBoardAnalyst';
 import { TechPackGenerator } from './components/TechPackGenerator';
 import { ProductReviewTool } from './components/ProductReviewTool';
@@ -18,7 +17,6 @@ import { DualGallery } from './components/DualGallery';
 import { Spinner } from './components/common/Spinner';
 import { TraceabilityModal } from './components/TraceabilityModal';
 import { PatternGalleryModal } from './components/PatternGalleryModal';
-import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { TechPackModal } from './components/TechPackModal';
 import { ProductReviewModal } from './components/ProductReviewModal';
 import { MultiViewModal } from './components/MultiViewModal';
@@ -28,9 +26,9 @@ import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { SaveSessionModal } from './components/SaveSessionModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
-import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateVideo, checkVideoOperation, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, blobToBase64, fileToBase64 } from './services/geminiService';
+import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData } from './services/fileService';
-import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, VideoItem, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin } from './types';
+import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, getDisplaySrc } from './types';
 
 const App: React.FC = () => {
     // Collection State
@@ -51,7 +49,6 @@ const App: React.FC = () => {
     const [traceabilityStartItem, setTraceabilityStartItem] = useState<GalleryAsset | null>(null);
     const [generatedPatterns, setGeneratedPatterns] = useState<GeneratedPattern[]>([]);
     const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
-    const [playingVideo, setPlayingVideo] = useState<VideoItem | null>(null);
     const [isGalleryFullscreen, setIsGalleryFullscreen] = useState(false);
     const [isSaveSessionModalOpen, setIsSaveSessionModalOpen] = useState(false);
     const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
@@ -193,7 +190,7 @@ const App: React.FC = () => {
             return { 
                 id, 
                 source, 
-                src: `data:${source.mimeType};base64,${source.data}`, 
+                src: getDisplaySrc(source), 
                 tag, 
                 prompt, 
                 parentId,
@@ -224,7 +221,7 @@ const App: React.FC = () => {
             return { 
                 id, 
                 source, 
-                src: `data:${source.mimeType};base64,${source.data}`, 
+                src: getDisplaySrc(source), 
                 tag, 
                 prompt, 
                 parentId,
@@ -373,7 +370,7 @@ const App: React.FC = () => {
              const newSourceItem: GalleryItem = {
                  id: newSourceId,
                  source: sourceImage,
-                 src: `data:${sourceImage.mimeType};base64,${sourceImage.data}`,
+                 src: getDisplaySrc(sourceImage),
                  tag: 'Studio Image',
                  prompt: 'Source for Multi-View',
                  collectionId: activeCollection?.id,
@@ -396,71 +393,12 @@ const App: React.FC = () => {
          handleBackToMenu();
     }
     
-    const handleGenerateVideo = async (sourceItem: GalleryItem, videoPrompt: string) => {
-        const POLLING_INTERVAL = 10000;
-        const VIDEO_MESSAGES = ["Sending your concept to the video studio...", "Rendering the frames...", "Applying final lighting...", "Polishing the final cut..."];
-        setIsLoading(true);
-        let messageIndex = 0;
-        setLoadingMessage(VIDEO_MESSAGES[messageIndex]);
-        const messageInterval = setInterval(() => { messageIndex = (messageIndex + 1) % VIDEO_MESSAGES.length; setLoadingMessage(VIDEO_MESSAGES[messageIndex]); }, 8000);
-        setError(null);
-        try {
-            if (!sourceItem.parentId) throw new Error("Cannot generate video: missing lineage.");
-            
-            const allItems = [...ideationGalleryItems, ...finalGalleryItems];
-            const parentItem = allItems.find(item => item.id === sourceItem.parentId);
-            
-            if (!parentItem || parentItem.tag !== 'Studio Image') throw new Error("Video generation failed: missing parent Studio Image.");
-            
-            const fullPrompt = `Create a high-quality, photorealistic promotional video. Animation: "${videoPrompt}".`;
-            let operation = await generateVideo(parentItem.source, fullPrompt);
-
-            while (!operation.done) {
-                await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
-                operation = await checkVideoOperation(operation);
-            }
-            clearInterval(messageInterval);
-            if (operation.error) throw new Error(`Video generation failed`);
-
-            if (operation.response?.generatedVideos?.[0]?.video?.uri) {
-                setLoadingMessage("Downloading your video...");
-                const downloadLink = operation.response.generatedVideos[0].video.uri;
-                const videoResponse = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-                const videoBlob = await videoResponse.blob();
-                const videoData = await blobToBase64(videoBlob);
-                
-                const targetSlotId = getTargetSlotId(activeSlotId, sourceItem.id);
-
-                const newItem: VideoItem = {
-                    id: self.crypto.randomUUID(),
-                    videoSource: { data: videoData, mimeType: videoBlob.type },
-                    thumbnailSrc: sourceItem.src,
-                    tag: 'Video',
-                    prompt: videoPrompt,
-                    parentId: parentItem.id,
-                    collectionId: activeCollection?.id,
-                    itemSlotId: targetSlotId
-                };
-                setFinalGalleryItems(prev => [...prev, newItem]);
-                handleBackToMenu();
-            } else {
-                throw new Error("Video generation failed or returned no data.");
-            }
-        } catch (e: any) {
-            clearInterval(messageInterval);
-            setError(e.message || "Video error.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-
     const handleGeneratePattern = async (prompt: string): Promise<GeneratedPattern[]> => {
         const imageSources = await generatePattern(prompt);
         const newPatterns: GeneratedPattern[] = imageSources.map(source => ({
             id: self.crypto.randomUUID(),
             source,
-            src: `data:${source.mimeType};base64,${source.data}`,
+            src: getDisplaySrc(source),
             prompt,
             collectionId: activeCollection?.id
         }));
@@ -481,7 +419,6 @@ const App: React.FC = () => {
         }
         // NOTE: We don't unset activeSlotId here if item doesn't have one, to allow users to use assets from other slots while "inside" a workspace
 
-        if (item.tag === 'Video') { setPlayingVideo(item as VideoItem); return; }
         if (item.tag === 'Mood Board') return;
         if (item.tag === 'Tech Pack') { setViewingTechPack(item as TechPackAsset); return; }
         if (item.tag === 'Product Review') { setViewingReview(item as ProductReviewAsset); return; }
@@ -493,7 +430,6 @@ const App: React.FC = () => {
         // Default Routes
         if (item.tag === 'Sketch') setActiveTool('visualiser');
         else if (item.tag === 'Studio Image') setActiveTool('multiview');
-        else if (item.tag === 'Model Shot') setActiveTool('video');
     }, [handleEditItem]);
 
     const performTechPackGeneration = async (item: GalleryItem, additionalImages: ImageSource[] = []) => {
@@ -501,7 +437,7 @@ const App: React.FC = () => {
         setLoadingMessage("Generating Smart Tech Pack...");
         setError(null);
         try {
-            const { sections, sizingData, costingData, placementData } = await generateTechPack(item.source, additionalImages);
+            const { sections, sizingData, costingData, placementData, bomData } = await generateTechPack(item.source, additionalImages);
             const targetSlotId = getTargetSlotId(activeSlotId, item.id);
 
             const newTechPack: TechPackAsset = {
@@ -514,6 +450,7 @@ const App: React.FC = () => {
                 sizingData: sizingData,
                 costingData: costingData,
                 placementData: placementData,
+                bomData: bomData,
                 parentId: item.id,
                 collectionId: activeCollection?.id,
                 itemSlotId: targetSlotId
@@ -523,10 +460,8 @@ const App: React.FC = () => {
             // Update Slot if applicable
             if (targetSlotId) {
                  setItemSlots(prev => prev.map(s => s.id === targetSlotId ? { ...s, techPackId: newTechPack.id } : s));
-                 handleBackToMenu();
-            } else {
-                 setViewingTechPack(newTechPack);
             }
+            setViewingTechPack(newTechPack);
         } catch (e: any) {
             setError(e.message || "Failed to generate tech pack.");
         } finally {
@@ -712,7 +647,6 @@ const App: React.FC = () => {
                 case 'model': return <ModelPlacement onPlace={handlePlaceOnModel} onBack={handleBackToMenu} inputImage={selectedImageForTool} />;
                 case 'sketchEditor': return <SketchEditor onGenerateTweak={handleGenerateSketchTweak} onBack={handleBackToMenu} inputImage={editingItem} />;
                 case 'studioImageEditor': return <StudioImageEditor onGenerateTweak={handleGenerateStudioImageTweak} onBack={handleBackToMenu} inputImage={editingItem} />;
-                case 'video': return <VideoGenerator onGenerate={handleGenerateVideo} onBack={handleBackToMenu} inputImage={selectedImageForTool} />;
                 case 'techpack': return <TechPackGenerator onGenerate={handleTechPackWorkflow} onBack={handleBackToMenu} />;
                 case 'review': return <ProductReviewTool onReview={handleProductReviewWorkflow} onBack={handleBackToMenu} />;
                 case 'shopperPulse': return <ShopperPulseTool onPulse={handleShopperPulseWorkflow} onBack={handleBackToMenu} />;
@@ -804,7 +738,6 @@ const App: React.FC = () => {
             {itemPendingShopperPulse && <ShopperPulseModal item={itemPendingShopperPulse} onClose={() => setItemPendingShopperPulse(null)} />}
             {traceabilityStartItem && <TraceabilityModal startItem={traceabilityStartItem} allItems={allGalleryItems} onClose={() => setTraceabilityStartItem(null)} onSelectItem={(item) => handleSelectGalleryItem(item, 'ideation')} />}
             {isPatternModalOpen && <PatternGalleryModal patterns={generatedPatterns} onClose={() => setIsPatternModalOpen(false)} />}
-            {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
             {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData)} />}
             {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}

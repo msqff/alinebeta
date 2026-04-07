@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GalleryItem, ImageSource } from '../types';
+import { getDisplaySrc,  GalleryItem, ImageSource } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { Spinner } from './common/Spinner';
 import { fileToBase64 } from '../services/geminiService';
@@ -37,7 +37,7 @@ export const MultiViewGenerator: React.FC<MultiViewGeneratorProps> = ({ onGenera
     const handleImageUpload = async (file: File) => {
         const imageSource = await fileToBase64(file);
         setBaseImage(imageSource);
-        setBaseImagePreview(`data:${imageSource.mimeType};base64,${imageSource.data}`);
+        setBaseImagePreview(getDisplaySrc(imageSource));
         setGeneratedResults({});
         setResultSources([]);
     };
@@ -64,7 +64,7 @@ export const MultiViewGenerator: React.FC<MultiViewGeneratorProps> = ({ onGenera
             const newResultSources = [...resultSources];
 
             results.forEach(res => {
-                newGeneratedResults[res.view] = `data:${res.image.mimeType};base64,${res.image.data}`;
+                newGeneratedResults[res.view] = getDisplaySrc(res.image);
                 // Remove existing result for this view if it exists (for regeneration)
                 const existingIdx = newResultSources.findIndex(r => r.view === res.view);
                 if (existingIdx >= 0) {
@@ -92,7 +92,7 @@ export const MultiViewGenerator: React.FC<MultiViewGeneratorProps> = ({ onGenera
             const results = await onGenerate(baseImage, [view]);
             if (results.length > 0) {
                 const res = results[0];
-                setGeneratedResults(prev => ({ ...prev, [view]: `data:${res.image.mimeType};base64,${res.image.data}` }));
+                setGeneratedResults(prev => ({ ...prev, [view]: getDisplaySrc(res.image) }));
                 setResultSources(prev => {
                     const idx = prev.findIndex(r => r.view === view);
                     if (idx >= 0) {

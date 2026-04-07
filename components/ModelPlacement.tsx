@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GalleryItem, ImageSource } from '../types';
+import { getDisplaySrc,  GalleryItem, ImageSource } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { fileToBase64 } from '../services/geminiService';
 
@@ -24,7 +24,7 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
     const handleImageUpload = async (file: File) => {
         const imageSource = await fileToBase64(file);
         setProductImage(imageSource);
-        setProductImagePreview(`data:${imageSource.mimeType};base64,${imageSource.data}`);
+        setProductImagePreview(getDisplaySrc(imageSource));
     };
 
     const handleSubmit = (e: React.FormEvent) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ProductReviewAsset, AuditSection } from '../types';
+import { getDisplaySrc,  ProductReviewAsset, AuditSection } from '../types';
 
 interface ProductReviewModalProps {
     asset: ProductReviewAsset;
@@ -83,7 +83,7 @@ export const ProductReviewModal: React.FC<ProductReviewModalProps> = ({ asset, o
                             <div className="grid grid-cols-2 gap-3">
                                 {asset.additionalSources.map((source, idx) => (
                                     <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                                        <img src={`data:${source.mimeType};base64,${source.data}`} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
+                                        <img src={getDisplaySrc(source)} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
                                     </div>
                                 ))}
                             </div>

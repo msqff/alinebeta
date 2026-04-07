@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GalleryAsset, GalleryItem, MoodBoardAsset, VideoItem, TechPackAsset, ProductReviewAsset, MultiViewAsset } from '../types';
+import { getDisplaySrc,  GalleryAsset, GalleryItem, MoodBoardAsset, TechPackAsset, ProductReviewAsset, MultiViewAsset } from '../types';
 
 interface FullscreenGalleryModalProps {
     ideationItems: GalleryAsset[];
@@ -19,7 +19,6 @@ const tagColor = {
     'Sketch': 'bg-blue-500',
     'Studio Image': 'bg-purple-500',
     'Model Shot': 'bg-green-500',
-    'Video': 'bg-red-500',
     'Mood Board': 'bg-amber-500',
     'Tech Pack': 'bg-cyan-500',
     'Product Review': 'bg-emerald-500',
@@ -39,7 +38,6 @@ const FullscreenCard: React.FC<{
 }> = ({ item, galleryType, onSelect, onEdit, onShowTraceability, onGenerateTechPack, onPromote, onDemote, onReview }) => {
     const handleActionClick = (e: React.MouseEvent, action: () => void) => { e.stopPropagation(); action(); };
 
-    const isVideo = item.tag === 'Video';
     const isMoodBoard = item.tag === 'Mood Board';
     const isTechPack = item.tag === 'Tech Pack';
     const isReview = item.tag === 'Product Review';
@@ -48,11 +46,8 @@ const FullscreenCard: React.FC<{
     let imageSrc: string | undefined;
     let promptText: string | undefined;
 
-    if (isVideo) {
-        imageSrc = (item as VideoItem).thumbnailSrc;
-        promptText = item.prompt;
-    } else if (isMoodBoard) {
-        imageSrc = `data:${(item as MoodBoardAsset).sources[0].mimeType};base64,${(item as MoodBoardAsset).sources[0].data}`;
+    if (isMoodBoard) {
+        imageSrc = getDisplaySrc((item as MoodBoardAsset).sources[0]);
     } else if (isTechPack) {
         imageSrc = (item as TechPackAsset).src;
     } else if (isReview) {
@@ -67,7 +62,7 @@ const FullscreenCard: React.FC<{
     const canShowTraceability = 'parentId' in item && !!item.parentId;
     const canEdit = (item.tag === 'Sketch' || item.tag === 'Studio Image') && galleryType === 'ideation';
     const canGenerateTechPack = item.tag === 'Studio Image' && galleryType === 'finals';
-    const canReview = galleryType === 'finals' && !isMoodBoard && !isTechPack && !isVideo && !isReview && !isMultiView;
+    const canReview = galleryType === 'finals' && !isMoodBoard && !isTechPack && !isReview && !isMultiView;
     const canPromote = galleryType === 'ideation';
     const canDemote = galleryType === 'finals';
 
@@ -81,7 +76,7 @@ const FullscreenCard: React.FC<{
                     {(item as MultiViewAsset).views.slice(0, 4).map((view, i) => (
                         <img 
                             key={i} 
-                            src={`data:${view.source.mimeType};base64,${view.source.data}`} 
+                            src={getDisplaySrc(view.source)} 
                             className="w-full h-full object-cover" 
                             alt={view.view} 
                         />
@@ -92,7 +87,6 @@ const FullscreenCard: React.FC<{
             )}
             
             <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">
-                {isVideo && <div className="text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 drop-shadow-lg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg></div>}
                 {isTechPack && <div className="text-white text-center p-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg><p className="text-sm font-bold mt-1 drop-shadow-md">View Tech Pack</p></div>}
                 {isReview && <div className="text-white text-center p-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg><p className="text-sm font-bold mt-1 drop-shadow-md">View Audit</p></div>}
                 {isMoodBoard && <div className="text-center text-white p-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><p className="text-sm font-bold mt-1 drop-shadow-md">{(item as MoodBoardAsset).sources.length} Images</p></div>}

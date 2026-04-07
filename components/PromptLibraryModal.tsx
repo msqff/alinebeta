@@ -112,11 +112,6 @@ COLOR PALETTE - Prioritize these colors where appropriate/unspecified: {palette}
         prompt: `Generate an extreme close-up MACRO shot of the fabric texture and details of the garment shown in the reference image. Focus on the weave, stitching, or buttons. Maintain exact color accuracy. Neutral background.`
     },
     {
-        name: "Generate Video",
-        description: "Generates a promotional video.",
-        prompt: `Create a high-quality, photorealistic promotional video. Animation: "{prompt}".`
-    },
-    {
         name: "Generate Tech Pack",
         description: "Generates a structured Technical Pack JSON object.",
         prompt: `Analyze the provided garment image(s) and generate a structured Technical Pack JSON object.

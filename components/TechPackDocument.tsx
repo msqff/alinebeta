@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import { TechPackAsset, TechPackSection, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
+import { getDisplaySrc,  TechPackAsset, TechPackSection, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
 
 // Create styles
 const styles = StyleSheet.create({
@@ -441,7 +441,7 @@ export const TechPackDocument: React.FC<TechPackDocumentProps> = ({ techPack, se
           <View style={styles.refGrid}>
             {techPack.additionalSources.map((source, idx) => (
               <View key={idx} style={styles.refImageContainer} wrap={false}>
-                <Image src={`data:${source.mimeType};base64,${source.data}`} style={styles.refImage} />
+                <Image src={getDisplaySrc(source)} style={styles.refImage} />
               </View>
             ))}
           </View>

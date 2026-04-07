@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ImageSource } from '../types';
+import { getDisplaySrc,  ImageSource } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { Spinner } from './common/Spinner';
 import { fileToBase64, analyzeMoodBoard } from '../services/geminiService';
@@ -87,7 +87,7 @@ export const MoodBoardAnalyst: React.FC<MoodBoardAnalystProps> = ({ onAnalysisCo
                         {generatedSketches.map((sketch, index) => (
                             <img 
                                 key={index}
-                                src={`data:${sketch.mimeType};base64,${sketch.data}`} 
+                                src={getDisplaySrc(sketch)} 
                                 alt={`Generated sketch ${index + 1}`}
                                 className="w-full h-auto object-contain rounded-xl bg-white shadow-lg border border-white/20 hover:scale-105 transition-transform duration-300"
                             />

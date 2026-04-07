@@ -1,12 +1,20 @@
 
-export type Tool = 'sketch' | 'visualiser' | 'multiview' | 'model' | 'sketchEditor' | 'video' | 'moodboard' | 'studioImageEditor' | 'techpack' | 'review' | 'shopperPulse';
+export type Tool = 'sketch' | 'visualiser' | 'multiview' | 'model' | 'sketchEditor' | 'moodboard' | 'studioImageEditor' | 'techpack' | 'review' | 'shopperPulse';
 
-export type GalleryTag = 'Sketch' | 'Studio Image' | 'Model Shot' | 'Mood Board' | 'Video' | 'Tech Pack' | 'Product Review' | 'Multi-View';
+export type GalleryTag = 'Sketch' | 'Studio Image' | 'Model Shot' | 'Mood Board' | 'Tech Pack' | 'Product Review' | 'Multi-View';
 
 export interface ImageSource {
-  data: string; // base64 encoded string
-  mimeType: string;
+  url?: string;
+  data?: string;
+  mimeType?: string;
 }
+
+export const getDisplaySrc = (source: ImageSource | undefined): string => {
+    if (!source) return '';
+    if (source.url) return source.url;
+    if (source.data && source.mimeType) return `data:${source.mimeType};base64,${source.data}`;
+    return '';
+};
 
 export interface Collection {
     id: string;
@@ -56,20 +64,6 @@ export interface GalleryItem {
   prompt: string;
   parentId?: string;
   // New Collection Links
-  collectionId?: string;
-  itemSlotId?: string;
-}
-
-export interface VideoItem {
-  id: string;
-  videoSource: { // Store the actual video data
-    data: string; // base64 encoded string
-    mimeType: string;
-  };
-  thumbnailSrc: string; // data URI of the source model shot for the thumbnail
-  tag: 'Video';
-  prompt: string;
-  parentId: string;
   collectionId?: string;
   itemSlotId?: string;
 }
@@ -172,7 +166,7 @@ export interface ProductReviewAsset {
 }
 
 
-export type GalleryAsset = GalleryItem | VideoItem | MoodBoardAsset | TechPackAsset | ProductReviewAsset | MultiViewAsset;
+export type GalleryAsset = GalleryItem | MoodBoardAsset | TechPackAsset | ProductReviewAsset | MultiViewAsset;
 
 
 export interface GeneratedPattern {

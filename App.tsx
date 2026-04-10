@@ -58,6 +58,7 @@ const App: React.FC = () => {
     const [itemPendingTechPack, setItemPendingTechPack] = useState<GalleryItem | null>(null);
     const [itemPendingAudit, setItemPendingAudit] = useState<GalleryItem | null>(null);
     const [itemPendingShopperPulse, setItemPendingShopperPulse] = useState<GalleryItem | null>(null);
+    const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
     // Load session on mount
     React.useEffect(() => {
@@ -78,10 +79,32 @@ const App: React.FC = () => {
                 console.error("Failed to load initial data", err);
             } finally {
                 setIsLoading(false);
+                setIsInitialized(true);
             }
         };
         initData();
     }, []);
+
+    // Auto-Save
+    React.useEffect(() => {
+        if (!isInitialized) return;
+
+        const autoSave = async () => {
+            try {
+                await saveSession({ 
+                    ideationGalleryItems, 
+                    finalGalleryItems, 
+                    generatedPatterns,
+                    collections,
+                    itemSlots
+                });
+            } catch (err) {
+                console.error("Auto-save failed", err);
+            }
+        };
+
+        autoSave();
+    }, [collections, itemSlots, ideationGalleryItems, finalGalleryItems, generatedPatterns, isInitialized]);
 
     // Collection Management
     const handleCreateCollection = (newCollection: Collection, initialItems: string[] = []) => {
@@ -611,26 +634,6 @@ const App: React.FC = () => {
         setViewingTechPack(null);
     };
 
-    const handleSaveSession = async () => {
-        setIsLoading(true);
-        setLoadingMessage("Saving to database...");
-        try {
-            await saveSession({ 
-                ideationGalleryItems, 
-                finalGalleryItems, 
-                generatedPatterns,
-                collections,
-                itemSlots
-            });
-        } catch (err) {
-            console.error("Failed to save session", err);
-            setError("Failed to save session to database.");
-        } finally {
-            setIsLoading(false);
-            setLoadingMessage("");
-        }
-    };
-
     const renderMainContent = () => {
         if (activeTool) {
              switch (activeTool) {
@@ -718,7 +721,6 @@ const App: React.FC = () => {
                     onGenerateTechPack={handleGenerateTechPack}
                     onPromoteItem={handlePromoteItem}
                     onDemoteItem={handleDemoteItem}
-                    onSaveSession={handleSaveSession}
                     onReview={handleRunComplianceCheck}
                 />
             )}
@@ -737,7 +739,6 @@ const App: React.FC = () => {
             <Header 
                 onShowPatterns={() => setIsPatternModalOpen(true)}
                 hasGeneratedPatterns={generatedPatterns.length > 0}
-                onSaveSession={handleSaveSession}
                 hasSessionData={hasSessionData}
                 activeCollection={activeCollection}
                 onExitCollection={handleExitCollection}

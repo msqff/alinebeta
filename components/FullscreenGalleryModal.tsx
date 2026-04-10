@@ -11,7 +11,6 @@ interface FullscreenGalleryModalProps {
     onGenerateTechPack: (item: GalleryItem) => void;
     onPromoteItem: (item: GalleryAsset) => void;
     onDemoteItem: (item: GalleryAsset) => void;
-    onSaveSession: () => void;
     onReview?: (item: GalleryItem) => void;
 }
 
@@ -128,7 +127,6 @@ export const FullscreenGalleryModal: React.FC<FullscreenGalleryModalProps> = ({
     onGenerateTechPack,
     onPromoteItem,
     onDemoteItem,
-    onSaveSession,
     onReview
 }) => {
     const [activeTab, setActiveTab] = useState<'ideation' | 'finals'>('ideation');
@@ -156,9 +154,6 @@ export const FullscreenGalleryModal: React.FC<FullscreenGalleryModalProps> = ({
                     </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                    <button onClick={onSaveSession} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 font-medium text-sm border border-slate-700">
-                        Save Session
-                    </button>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

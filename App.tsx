@@ -24,7 +24,6 @@ import { TechPackWarningModal } from './components/TechPackWarningModal';
 import { AuditWarningModal } from './components/AuditWarningModal';
 import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
-import { SaveSessionModal } from './components/SaveSessionModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData } from './services/fileService';
@@ -50,7 +49,6 @@ const App: React.FC = () => {
     const [generatedPatterns, setGeneratedPatterns] = useState<GeneratedPattern[]>([]);
     const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
     const [isGalleryFullscreen, setIsGalleryFullscreen] = useState(false);
-    const [isSaveSessionModalOpen, setIsSaveSessionModalOpen] = useState(false);
     const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
     
     const [viewingTechPack, setViewingTechPack] = useState<TechPackAsset | null>(null);
@@ -61,7 +59,29 @@ const App: React.FC = () => {
     const [itemPendingAudit, setItemPendingAudit] = useState<GalleryItem | null>(null);
     const [itemPendingShopperPulse, setItemPendingShopperPulse] = useState<GalleryItem | null>(null);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Load session on mount
+    React.useEffect(() => {
+        const initData = async () => {
+            setIsLoading(true);
+            try {
+                const sessionData = await loadSession();
+                setIdeationGalleryItems(sessionData.ideationGalleryItems);
+                setFinalGalleryItems(sessionData.finalGalleryItems);
+                setGeneratedPatterns(sessionData.generatedPatterns);
+                setCollections(sessionData.collections);
+                setItemSlots(sessionData.itemSlots);
+                
+                if (sessionData.collections.length === 1) {
+                    setActiveCollection(sessionData.collections[0]);
+                }
+            } catch (err) {
+                console.error("Failed to load initial data", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        initData();
+    }, []);
 
     // Collection Management
     const handleCreateCollection = (newCollection: Collection, initialItems: string[] = []) => {
@@ -591,49 +611,23 @@ const App: React.FC = () => {
         setViewingTechPack(null);
     };
 
-    const executeSaveSession = (sessionName: string) => {
-        saveSession({ 
-            ideationGalleryItems, 
-            finalGalleryItems, 
-            generatedPatterns,
-            collections,
-            itemSlots
-        }, sessionName);
-        setIsSaveSessionModalOpen(false);
-    };
-
-    const handleLoadSessionClick = () => {
-        if (ideationGalleryItems.length > 0 || finalGalleryItems.length > 0) {
-            if (!window.confirm("Loading a new session will replace your current work. Are you sure?")) return;
-        }
-        fileInputRef.current?.click();
-    };
-
-    const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+    const handleSaveSession = async () => {
         setIsLoading(true);
+        setLoadingMessage("Saving to database...");
         try {
-            const sessionData = await loadSession(file);
-            setIdeationGalleryItems(sessionData.ideationGalleryItems);
-            setFinalGalleryItems(sessionData.finalGalleryItems);
-            setGeneratedPatterns(sessionData.generatedPatterns);
-            setCollections(sessionData.collections);
-            setItemSlots(sessionData.itemSlots);
-            
-            // If only one collection, auto-select it for convenience
-            if (sessionData.collections.length === 1) {
-                setActiveCollection(sessionData.collections[0]);
-            } else {
-                handleExitCollection();
-            }
-            
-            setError(null);
-        } catch (e: any) {
-            setError(e.message || "Failed to load session file.");
+            await saveSession({ 
+                ideationGalleryItems, 
+                finalGalleryItems, 
+                generatedPatterns,
+                collections,
+                itemSlots
+            });
+        } catch (err) {
+            console.error("Failed to save session", err);
+            setError("Failed to save session to database.");
         } finally {
-            if (event.target) event.target.value = '';
             setIsLoading(false);
+            setLoadingMessage("");
         }
     };
 
@@ -712,7 +706,6 @@ const App: React.FC = () => {
                     <p className="mt-6 text-xl text-white font-light tracking-wide animate-pulse">{loadingMessage}</p>
                 </div>
             )}
-            <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="application/json,.json" />
             
             {isGalleryFullscreen && (
                 <FullscreenGalleryModal
@@ -725,13 +718,12 @@ const App: React.FC = () => {
                     onGenerateTechPack={handleGenerateTechPack}
                     onPromoteItem={handlePromoteItem}
                     onDemoteItem={handleDemoteItem}
-                    onSaveSession={() => setIsSaveSessionModalOpen(true)}
+                    onSaveSession={handleSaveSession}
                     onReview={handleRunComplianceCheck}
                 />
             )}
             
             {/* Modals */}
-            {isSaveSessionModalOpen && <SaveSessionModal onClose={() => setIsSaveSessionModalOpen(false)} onSave={executeSaveSession} />}
             {isPromptLibraryOpen && <PromptLibraryModal onClose={() => setIsPromptLibraryOpen(false)} />}
             {itemPendingTechPack && <TechPackWarningModal onClose={() => setItemPendingTechPack(null)} onProceedSingleView={() => { if(itemPendingTechPack) performTechPackGeneration(itemPendingTechPack) }} onGenerateMultiView={() => { if(itemPendingTechPack) { setSelectedImageForTool(itemPendingTechPack); setActiveTool('multiview'); setItemPendingTechPack(null); } }} />}
             {itemPendingAudit && <AuditWarningModal onClose={() => setItemPendingAudit(null)} onGenerateTechPack={() => { if(itemPendingAudit) { handleGenerateTechPack(itemPendingAudit); setItemPendingAudit(null); } }} onProceed={() => { if(itemPendingAudit) performProductReview(itemPendingAudit) }} />}
@@ -745,8 +737,7 @@ const App: React.FC = () => {
             <Header 
                 onShowPatterns={() => setIsPatternModalOpen(true)}
                 hasGeneratedPatterns={generatedPatterns.length > 0}
-                onSaveSession={() => setIsSaveSessionModalOpen(true)}
-                onLoadSession={handleLoadSessionClick}
+                onSaveSession={handleSaveSession}
                 hasSessionData={hasSessionData}
                 activeCollection={activeCollection}
                 onExitCollection={handleExitCollection}

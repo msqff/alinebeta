@@ -5,7 +5,6 @@ interface HeaderProps {
     onShowPatterns: () => void;
     hasGeneratedPatterns: boolean;
     onSaveSession: () => void;
-    onLoadSession: () => void;
     hasSessionData: boolean;
     activeCollection: Collection | null;
     onExitCollection: () => void;
@@ -18,7 +17,6 @@ export const Header: React.FC<HeaderProps> = ({
     onShowPatterns, 
     hasGeneratedPatterns, 
     onSaveSession, 
-    onLoadSession, 
     hasSessionData,
     activeCollection,
     onExitCollection,
@@ -102,12 +100,6 @@ export const Header: React.FC<HeaderProps> = ({
                                 className="px-4 py-2 text-xs font-medium bg-white/5 border border-white/10 text-slate-300 rounded-lg hover:bg-white/10 hover:text-white transition-all"
                             >
                                 Prompt Library
-                            </button>
-                            <button 
-                                onClick={onLoadSession}
-                                className="px-4 py-2 text-xs font-medium bg-white/5 border border-white/10 text-slate-300 rounded-lg hover:bg-white/10 hover:text-white transition-all"
-                            >
-                                Load Session
                             </button>
                             {hasSessionData && (
                                 <button 

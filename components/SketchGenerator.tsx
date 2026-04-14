@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 
 interface SketchGeneratorProps {
-    onGenerate: (prompt: string) => void;
+    onGenerate: (prompt: string, imageCount: number) => void;
     onBack: () => void;
 }
 
 export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, onBack }) => {
     const [prompt, setPrompt] = useState('');
+    const [imageCount, setImageCount] = useState(4);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (prompt.trim()) {
-            onGenerate(prompt);
+            onGenerate(prompt, imageCount);
         }
     };
 
@@ -40,20 +41,36 @@ export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, on
                         />
                     </div>
                 </div>
-                <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900/50 p-6 rounded-2xl border border-white/5">
-                    <div className="mb-4 md:mb-0 flex items-center text-slate-400 text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Generates 4 distinct variations per request.
+                <div className="flex flex-col bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+                    <div className="flex items-center justify-between w-full mb-6 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                        <label htmlFor="imageCount" className="text-xs font-bold uppercase text-slate-500 mr-4 whitespace-nowrap">Variations to Generate</label>
+                        <input
+                            id="imageCount"
+                            type="range"
+                            min="1"
+                            max="4"
+                            step="1"
+                            value={imageCount}
+                            onChange={(e) => setImageCount(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        />
+                        <span className="ml-4 text-white font-mono text-sm w-8 text-right">{imageCount}</span>
                     </div>
-                    <button
-                        type="submit"
-                        disabled={!prompt.trim()}
-                        className="w-full md:w-auto px-10 py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold rounded-xl hover:from-indigo-500 hover:to-indigo-400 transition-all shadow-lg shadow-indigo-900/30 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
-                    >
-                        Generate Sketches
-                    </button>
+                    <div className="flex flex-col md:flex-row justify-between items-center">
+                        <div className="mb-4 md:mb-0 flex items-center text-slate-400 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Generates {imageCount} distinct variation{imageCount !== 1 ? 's' : ''} per request.
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={!prompt.trim()}
+                            className="w-full md:w-auto px-10 py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold rounded-xl hover:from-indigo-500 hover:to-indigo-400 transition-all shadow-lg shadow-indigo-900/30 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
+                        >
+                            Generate Sketches
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

@@ -1,12 +1,15 @@
 import React from 'react';
 import { FileUpload } from './common/FileUpload';
+import { GalleryItem } from '../types';
 
 interface ProductReviewToolProps {
     onReview: (file: File) => void;
+    onProceedWithImage?: () => void;
+    inputImage?: GalleryItem | null;
     onBack: () => void;
 }
 
-export const ProductReviewTool: React.FC<ProductReviewToolProps> = ({ onReview, onBack }) => {
+export const ProductReviewTool: React.FC<ProductReviewToolProps> = ({ onReview, onProceedWithImage, inputImage, onBack }) => {
     const handleFileUpload = (files: File[]) => {
         if (files.length > 0) {
             onReview(files[0]);
@@ -32,13 +35,34 @@ export const ProductReviewTool: React.FC<ProductReviewToolProps> = ({ onReview, 
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
-                    <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Design for Audit</h3>
-                    <div className="w-full h-64">
-                         <FileUpload onFilesUpload={handleFileUpload} />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
-                        The AI will act as an IP Lawyer and Safety Inspector, checking for potential trademark violations, copyright issues, strangulation risks, and other compliance hazards.
-                    </p>
+                    
+                    {inputImage ? (
+                        <div className="w-full flex flex-col items-center">
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Selected Design Image</h3>
+                            <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 w-full max-w-sm mb-6">
+                                <img src={inputImage.src} alt="Selected" className="w-full h-64 object-contain p-4" />
+                            </div>
+                            <button 
+                                onClick={onProceedWithImage}
+                                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-emerald-500/20"
+                            >
+                                Run Audit
+                            </button>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                Or select a different image from the gallery below.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Design for Audit</h3>
+                            <div className="w-full h-64">
+                                 <FileUpload onFilesUpload={handleFileUpload} />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                The AI will act as an IP Lawyer and Safety Inspector, checking for potential trademark violations, copyright issues, strangulation risks, and other compliance hazards.
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

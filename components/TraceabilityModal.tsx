@@ -8,10 +8,10 @@ interface TraceabilityModalProps {
     onSelectItem: (item: GalleryAsset) => void;
 }
 
-const downloadImage = (src: string, mimeType: string, tag: string, prompt: string, id: string) => {
+const downloadImage = (src: string, mimeType: string | undefined, tag: string, prompt: string, id: string) => {
     const link = document.createElement('a');
     link.href = src;
-    const extension = mimeType.split('/')[1] || 'png';
+    const extension = mimeType ? mimeType.split('/')[1] : 'png';
     const safeTag = tag.replace(/\s/g, '_').toLowerCase();
     const safePrompt = (prompt || '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
     link.download = `${safeTag}_${safePrompt || id.slice(0, 8)}.${extension}`;

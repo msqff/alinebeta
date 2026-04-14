@@ -1,12 +1,15 @@
 import React from 'react';
 import { FileUpload } from './common/FileUpload';
+import { GalleryItem } from '../types';
 
 interface ShopperPulseToolProps {
     onPulse: (file: File) => void;
+    onProceedWithImage?: () => void;
+    inputImage?: GalleryItem | null;
     onBack: () => void;
 }
 
-export const ShopperPulseTool: React.FC<ShopperPulseToolProps> = ({ onPulse, onBack }) => {
+export const ShopperPulseTool: React.FC<ShopperPulseToolProps> = ({ onPulse, onProceedWithImage, inputImage, onBack }) => {
     const handleFileUpload = (files: File[]) => {
         if (files.length > 0) {
             onPulse(files[0]);
@@ -32,13 +35,34 @@ export const ShopperPulseTool: React.FC<ShopperPulseToolProps> = ({ onPulse, onB
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                     </div>
-                    <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Product Image</h3>
-                    <div className="w-full h-64">
-                         <FileUpload onFilesUpload={handleFileUpload} />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
-                        Get instant feedback from AI personas representing "The Value Seeker", "The Quality Conscious", and "The Trend Hunter" shoppers in the UK market.
-                    </p>
+                    
+                    {inputImage ? (
+                        <div className="w-full flex flex-col items-center">
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Selected Product Image</h3>
+                            <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 w-full max-w-sm mb-6">
+                                <img src={inputImage.src} alt="Selected" className="w-full h-64 object-contain p-4" />
+                            </div>
+                            <button 
+                                onClick={onProceedWithImage}
+                                className="px-8 py-3 bg-pink-600 hover:bg-pink-500 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-pink-500/20"
+                            >
+                                Run Shopper Pulse
+                            </button>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                Or select a different image from the gallery below.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Product Image</h3>
+                            <div className="w-full h-64">
+                                 <FileUpload onFilesUpload={handleFileUpload} />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                Get instant feedback from AI personas representing "The Value Seeker", "The Quality Conscious", and "The Trend Hunter" shoppers in the UK market.
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

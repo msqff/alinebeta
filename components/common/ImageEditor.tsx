@@ -7,7 +7,7 @@ interface ImageEditorProps {
     description: string;
     placeholder: string;
     submitButtonText: string;
-    onGenerate: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource) => void;
+    onGenerate: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount?: number) => void;
     onBack: () => void;
     inputImage: GalleryItem;
 }
@@ -23,6 +23,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
 }) => {
     const [prompt, setPrompt] = useState('');
     const [brushSize, setBrushSize] = useState(40);
+    const [imageCount, setImageCount] = useState(4);
     const canvasRef = useRef<InpaintingCanvasRef>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -30,7 +31,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
         if (prompt.trim() && inputImage) {
             const maskDataUrl = canvasRef.current?.getMaskDataUrl();
             const maskImage = maskDataUrl ? dataUrlToImageSource(maskDataUrl) : undefined;
-            onGenerate(inputImage.source, prompt, maskImage);
+            onGenerate(inputImage.source, prompt, maskImage, imageCount);
         }
     };
 
@@ -73,6 +74,20 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                 </div>
 
                 <div className="flex flex-col bg-slate-950/40 p-6 rounded-2xl border border-white/5 shadow-inner">
+                    <div className="flex items-center justify-between w-full mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <label htmlFor="imageCount" className="text-xs font-bold uppercase text-slate-500 mr-4 whitespace-nowrap">Variations to Generate</label>
+                        <input
+                            id="imageCount"
+                            type="range"
+                            min="1"
+                            max="4"
+                            step="1"
+                            value={imageCount}
+                            onChange={(e) => setImageCount(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        />
+                        <span className="ml-4 text-white font-mono text-sm w-8 text-right">{imageCount}</span>
+                    </div>
                     <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-slate-400 flex items-center">Instruction Prompt</h3>
                     <div className="relative group flex-grow mb-6">
                         <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl opacity-10 group-focus-within:opacity-50 transition duration-500 blur"></div>

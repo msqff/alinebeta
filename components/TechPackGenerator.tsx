@@ -1,12 +1,15 @@
 import React from 'react';
 import { FileUpload } from './common/FileUpload';
+import { GalleryItem } from '../types';
 
 interface TechPackGeneratorProps {
     onGenerate: (file: File) => void;
+    onProceedWithImage?: () => void;
+    inputImage?: GalleryItem | null;
     onBack: () => void;
 }
 
-export const TechPackGenerator: React.FC<TechPackGeneratorProps> = ({ onGenerate, onBack }) => {
+export const TechPackGenerator: React.FC<TechPackGeneratorProps> = ({ onGenerate, onProceedWithImage, inputImage, onBack }) => {
     const handleFileUpload = (files: File[]) => {
         if (files.length > 0) {
             onGenerate(files[0]);
@@ -32,13 +35,34 @@ export const TechPackGenerator: React.FC<TechPackGeneratorProps> = ({ onGenerate
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Finished Garment Image</h3>
-                    <div className="w-full h-64">
-                         <FileUpload onFilesUpload={handleFileUpload} />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
-                        Upload a studio-quality image of your garment. The AI will analyze features, materials, and construction details to build a comprehensive specification document.
-                    </p>
+                    
+                    {inputImage ? (
+                        <div className="w-full flex flex-col items-center">
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Selected Garment Image</h3>
+                            <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 w-full max-w-sm mb-6">
+                                <img src={inputImage.src} alt="Selected" className="w-full h-64 object-contain p-4" />
+                            </div>
+                            <button 
+                                onClick={onProceedWithImage}
+                                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-indigo-500/20"
+                            >
+                                Generate Tech Pack
+                            </button>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                Or select a different image from the gallery below.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Upload Finished Garment Image</h3>
+                            <div className="w-full h-64">
+                                 <FileUpload onFilesUpload={handleFileUpload} />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-6 text-center max-w-md leading-relaxed">
+                                Upload a studio-quality image of your garment, or select one from the gallery below. The AI will analyze features, materials, and construction details to build a comprehensive specification document.
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

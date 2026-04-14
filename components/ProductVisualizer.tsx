@@ -5,10 +5,10 @@ import { fileToBase64 } from '../services/geminiService';
 import { Spinner } from './common/Spinner';
 
 interface ProductVisualiserProps {
-    onVisualise: (baseImage: ImageSource, prompt: string, patternImage?: ImageSource) => void;
+    onVisualise: (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, imageCount?: number) => void;
     onBack: () => void;
     inputImage: GalleryItem | null;
-    onGeneratePattern: (prompt: string) => Promise<GeneratedPattern[]>;
+    onGeneratePattern: (prompt: string, imageCount?: number) => Promise<GeneratedPattern[]>;
 }
 
 export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualise, onBack, inputImage, onGeneratePattern }) => {
@@ -17,6 +17,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
     const [patternImage, setPatternImage] = useState<ImageSource | null>(null);
     const [baseImagePreview, setBaseImagePreview] = useState<string | null>(inputImage?.src || null);
     const [patternImagePreview, setPatternImagePreview] = useState<string | null>(null);
+    const [imageCount, setImageCount] = useState(4);
 
     const [patternMode, setPatternMode] = useState<'upload' | 'generate'>('upload');
     const [patternPrompt, setPatternPrompt] = useState('');
@@ -49,7 +50,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (prompt.trim() && baseImage) {
-            onVisualise(baseImage, prompt, patternImage ?? undefined);
+            onVisualise(baseImage, prompt, patternImage ?? undefined, imageCount);
         }
     };
 
@@ -57,7 +58,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
         if (!patternPrompt.trim()) return;
         setIsGeneratingPattern(true);
         try {
-            const newPatterns = await onGeneratePattern(patternPrompt);
+            const newPatterns = await onGeneratePattern(patternPrompt, imageCount);
             setLocalPatterns(newPatterns);
         } catch (e) {
             console.error("Failed to generate patterns", e);
@@ -169,6 +170,20 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
                                 placeholder="Describe the garment's material, texture, and color details (e.g., heavy wool blend in navy blue with gold buttons)..."
                                 className="relative w-full h-full min-h-[200px] p-6 bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none transition-all text-white text-lg placeholder-slate-600 resize-none leading-relaxed"
                             />
+                        </div>
+                        <div className="flex items-center justify-between w-full mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                            <label htmlFor="imageCount" className="text-xs font-bold uppercase text-slate-500 mr-4 whitespace-nowrap">Variations to Generate</label>
+                            <input
+                                id="imageCount"
+                                type="range"
+                                min="1"
+                                max="4"
+                                step="1"
+                                value={imageCount}
+                                onChange={(e) => setImageCount(Number(e.target.value))}
+                                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                            />
+                            <span className="ml-4 text-white font-mono text-sm w-8 text-right">{imageCount}</span>
                         </div>
                         <button
                             type="submit"

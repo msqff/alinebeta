@@ -3,7 +3,7 @@ import { GalleryItem, ImageSource } from '../types';
 import { ImageEditor } from './common/ImageEditor';
 
 interface SketchEditorProps {
-    onGenerateTweak: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource) => void;
+    onGenerateTweak: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount?: number) => void;
     onBack: () => void;
     inputImage: GalleryItem | null;
 }

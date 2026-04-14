@@ -1,16 +1,63 @@
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
+
+const compressImage = (dataUrl: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+            if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                resolve(dataUrl); // Fallback to original if canvas fails
+                return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+    });
+};
 
 export const uploadBase64 = async (base64: string, mimeType: string): Promise<string> => {
     const dataUrl = `data:${mimeType};base64,${base64}`;
-    const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64: dataUrl })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Upload failed');
-    return data.url;
+    
+    // Compress image before upload to save bandwidth and allow Firestore fallback
+    let compressedDataUrl = dataUrl;
+    try {
+        compressedDataUrl = await compressImage(dataUrl);
+    } catch (e) {
+        console.warn("Image compression failed, using original", e);
+    }
+
+    const filename = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
+    const storageRef = ref(storage, filename);
+    try {
+        await uploadString(storageRef, compressedDataUrl, 'data_url');
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
+    } catch (error: any) {
+        console.error("Firebase Storage Error:", error);
+        console.warn("Falling back to base64 data URL due to Storage error.");
+        // Fallback to returning the compressed data URL directly so it gets saved in Firestore
+        return compressedDataUrl;
+    }
 };
 
 export const fileToBase64 = async (file: File): Promise<ImageSource> => {
@@ -22,7 +69,7 @@ export const fileToBase64 = async (file: File): Promise<ImageSource> => {
       const data = result.split(',')[1];
       try {
           const url = await uploadBase64(data, file.type);
-          resolve({ url });
+          resolve({ url }); // Only store URL to prevent Firestore document bloat
       } catch (e) {
           reject(e);
       }
@@ -42,18 +89,20 @@ const getUrlAsBase64 = async (url: string): Promise<{ data: string, mimeType: st
             return { mimeType: matches[1], data: matches[2] };
         }
     }
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const result = reader.result as string;
-            const data = result.split(',')[1];
-            resolve({ data, mimeType: blob.type });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+    
+    // Use proxy to bypass CORS
+    const response = await fetch('/api/proxy-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
     });
+    
+    if (!response.ok) {
+        throw new Error('Failed to fetch image via proxy');
+    }
+    
+    const result = await response.json();
+    return { data: result.data, mimeType: result.mimeType };
 };
 
 const getImageData = async (image: ImageSource): Promise<{ data: string, mimeType: string }> => {
@@ -189,7 +238,7 @@ export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: strin
     return { summary, sketches };
 };
 
-export const generateSketches = async (prompt: string, context?: { styleDna: string }): Promise<ImageSource[]> => {
+export const generateSketches = async (prompt: string, context?: { styleDna: string }, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     
     let fullPrompt = `A minimalist black and white fashion flat sketch of ${prompt}. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
@@ -211,11 +260,11 @@ export const generateSketches = async (prompt: string, context?: { styleDna: str
         return { url };
     };
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 
-export const generatePattern = async (prompt: string): Promise<ImageSource[]> => {
+export const generatePattern = async (prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     const fullPrompt = `A seamless, tileable, photorealistic pattern of ${prompt}. The image should be a square (1:1 aspect ratio).`;
     
@@ -232,11 +281,11 @@ export const generatePattern = async (prompt: string): Promise<ImageSource[]> =>
         return { url };
     };
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 
-export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource): Promise<ImageSource[]> => {
+export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     let textPrompt: string;
@@ -263,11 +312,11 @@ export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskIm
         return { url };
     };
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 
-export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource): Promise<ImageSource[]> => {
+export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     let textPrompt: string;
@@ -294,11 +343,11 @@ export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, m
         return { url };
     };
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 
-export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
+export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     
@@ -330,7 +379,7 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
         return { url };
     }
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 

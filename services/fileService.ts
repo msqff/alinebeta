@@ -1,4 +1,6 @@
 import { GalleryAsset, GeneratedPattern, Collection, ItemSlot, GalleryItem, TechPackAsset, ProductReviewAsset } from '../types';
+import { db } from '../firebase';
+import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
 
 export interface SessionData {
     ideationGalleryItems: GalleryAsset[];
@@ -8,27 +10,22 @@ export interface SessionData {
     itemSlots: ItemSlot[];
 }
 
-export const saveSession = async (sessionData: SessionData): Promise<void> => {
+export const saveSession = async (sessionData: SessionData, userId: string): Promise<void> => {
     try {
         // Save Collections
-        for (const collection of sessionData.collections) {
-            await fetch('/api/collections', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(collection)
-            });
+        const collectionsRef = collection(db, `users/${userId}/collections`);
+        for (const item of sessionData.collections) {
+            await setDoc(doc(collectionsRef, item.id), item);
         }
 
         // Save Item Slots
+        const slotsRef = collection(db, `users/${userId}/itemSlots`);
         for (const slot of sessionData.itemSlots) {
-            await fetch('/api/item-slots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(slot)
-            });
+            await setDoc(doc(slotsRef, slot.id), slot);
         }
 
         // Save Assets
+        const assetsRef = collection(db, `users/${userId}/assets`);
         const allAssets = [
             ...sessionData.ideationGalleryItems.map(a => ({ ...a, _assetGroup: 'ideation' })),
             ...sessionData.finalGalleryItems.map(a => ({ ...a, _assetGroup: 'final' })),
@@ -36,11 +33,7 @@ export const saveSession = async (sessionData: SessionData): Promise<void> => {
         ];
 
         for (const asset of allAssets) {
-            await fetch('/api/assets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(asset)
-            });
+            await setDoc(doc(assetsRef, asset.id), asset);
         }
     } catch (error) {
         console.error('Failed to save session:', error);
@@ -48,17 +41,17 @@ export const saveSession = async (sessionData: SessionData): Promise<void> => {
     }
 };
 
-export const loadSession = async (): Promise<SessionData> => {
+export const loadSession = async (userId: string): Promise<SessionData> => {
     try {
-        const [collectionsRes, slotsRes, assetsRes] = await Promise.all([
-            fetch('/api/collections'),
-            fetch('/api/item-slots'),
-            fetch('/api/assets')
+        const [collectionsSnap, slotsSnap, assetsSnap] = await Promise.all([
+            getDocs(collection(db, `users/${userId}/collections`)),
+            getDocs(collection(db, `users/${userId}/itemSlots`)),
+            getDocs(collection(db, `users/${userId}/assets`))
         ]);
 
-        const collections = await collectionsRes.json();
-        const itemSlots = await slotsRes.json();
-        const allAssets = await assetsRes.json();
+        const collections = collectionsSnap.docs.map(d => d.data() as Collection);
+        const itemSlots = slotsSnap.docs.map(d => d.data() as ItemSlot);
+        const allAssets = assetsSnap.docs.map(d => d.data());
 
         const data: SessionData = {
             ideationGalleryItems: [],
@@ -72,16 +65,16 @@ export const loadSession = async (): Promise<SessionData> => {
             allAssets.forEach((asset: any) => {
                 if (asset._assetGroup === 'ideation') {
                     delete asset._assetGroup;
-                    data.ideationGalleryItems.push(asset);
+                    data.ideationGalleryItems.push(asset as GalleryAsset);
                 } else if (asset._assetGroup === 'final') {
                     delete asset._assetGroup;
-                    data.finalGalleryItems.push(asset);
+                    data.finalGalleryItems.push(asset as GalleryAsset);
                 } else if (asset._assetGroup === 'pattern') {
                     delete asset._assetGroup;
-                    data.generatedPatterns.push(asset);
+                    data.generatedPatterns.push(asset as GeneratedPattern);
                 } else {
                     // Fallback for legacy or un-grouped assets
-                    data.ideationGalleryItems.push(asset);
+                    data.ideationGalleryItems.push(asset as GalleryAsset);
                 }
             });
         }

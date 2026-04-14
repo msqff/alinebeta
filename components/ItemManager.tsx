@@ -116,8 +116,8 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                         : (isFinalSketch ? 'Final Sketch' : 'Initial Sketch');
 
                     return (
-                        <div key={slot.id} className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col relative group hover:bg-slate-900/60 transition-colors h-full w-full">
-                            <div className="mb-3 flex justify-between items-center min-h-[28px]">
+                        <div key={slot.id} className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
+                            <div className="mb-3 flex justify-between items-center min-h-[28px] flex-shrink-0">
                                 <span 
                                     onClick={() => onEnterItem(slot.id)}
                                     className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px]"
@@ -138,7 +138,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                             {/* Hero Slot */}
                             <div 
                                 onClick={() => heroAsset ? onSelectItem(slot.id, heroType) : onOpenTool('sketch', slot.id)}
-                                className={`aspect-[3/4] mb-3 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full ${heroAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
+                                className={`aspect-square mb-3 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full ${heroAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
                             >
                                 {heroAsset ? (
                                     <img src={getAssetDisplaySrc(heroAsset)} alt={slot.name} className="w-full h-full object-cover" />
@@ -156,11 +156,11 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                             </div>
 
                             {/* Action Slots */}
-                            <div className="grid grid-cols-3 gap-2 h-14 mt-auto w-full">
+                            <div className="grid grid-cols-3 gap-2 mt-auto w-full flex-shrink-0">
                                 {/* Sketch Link */}
                                 <div 
                                     onClick={() => sketch ? onSelectItem(slot.id, 'sketch') : onOpenTool('sketch', slot.id)}
-                                    className={`rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${sketch ? 'border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
+                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${sketch ? 'border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
                                     title={sketch ? "View Sketch" : "Generate Sketch"}
                                 >
                                     {sketch ? (
@@ -173,7 +173,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                 {/* Render Link */}
                                 <div 
                                     onClick={() => studio ? onSelectItem(slot.id, 'studio') : (sketch ? onOpenTool('visualiser', slot.id) : null)}
-                                    className={`rounded-lg border flex flex-col items-center justify-center transition-all ${studio ? 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer' : (sketch ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${studio ? 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer' : (sketch ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
                                     title={studio ? "View Render" : "Visualise Product"}
                                 >
                                      {studio ? (
@@ -186,7 +186,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                 {/* Tech Pack Link */}
                                 <div 
                                     onClick={() => techpack ? onSelectItem(slot.id, 'techpack') : (studio ? onOpenTool('techpack', slot.id) : null)}
-                                    className={`rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (studio ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (studio ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
                                     title={techpack ? "View Tech Pack" : "Generate Tech Pack"}
                                 >
                                      {techpack ? (
@@ -206,21 +206,21 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                     <div 
                         key={`suggestion-${idx}`}
                         onClick={() => handleAcceptSuggestion(item.name)}
-                        className="bg-indigo-900/10 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-900/20 rounded-2xl p-4 flex flex-col relative group transition-all h-full w-full cursor-pointer"
+                        className="bg-indigo-900/10 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-900/20 rounded-2xl p-4 flex flex-col h-full relative group transition-all w-full cursor-pointer"
                     >
                         <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold uppercase px-2 py-1 rounded-bl-lg rounded-tr-xl opacity-80 z-10 shadow-lg">AI Suggestion</div>
                         
                         {/* Header Spacer to match Item Card Title */}
-                        <div className="mb-3 min-h-[28px] w-full"></div>
+                        <div className="mb-3 min-h-[28px] w-full flex-shrink-0"></div>
 
                         {/* Main Content mimicking Aspect Ratio */}
-                        <div className="aspect-[3/4] mb-3 w-full flex flex-col items-center justify-center text-center p-4">
+                        <div className="aspect-square mb-3 w-full flex flex-col items-center justify-center text-center p-4">
                             <h4 className="text-white font-bold text-lg mb-2 group-hover:text-indigo-300 transition-colors line-clamp-2">{item.name}</h4>
                             <p className="text-xs text-slate-400 leading-relaxed max-w-[90%] line-clamp-4">{item.reasoning}</p>
                         </div>
 
                         {/* Footer Spacer to match Action Bar */}
-                        <div className="h-14 mt-auto w-full flex items-center justify-center bg-indigo-900/40 rounded-xl border border-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wide group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
+                        <div className="h-14 mt-auto w-full flex-shrink-0 flex items-center justify-center bg-indigo-900/40 rounded-xl border border-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wide group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
@@ -231,9 +231,9 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
 
                 {/* Add Slot Card (or Form) */}
                 {isAdding ? (
-                    <form onSubmit={handleCreate} className="bg-slate-900/40 border-2 border-indigo-500 rounded-2xl p-4 flex flex-col relative h-full w-full">
-                        <div className="mb-3 min-h-[28px]"></div>
-                        <div className="aspect-[3/4] mb-3 w-full flex flex-col justify-center">
+                    <form onSubmit={handleCreate} className="bg-slate-900/40 border-2 border-indigo-500 rounded-2xl p-4 flex flex-col h-full relative w-full">
+                        <div className="mb-3 min-h-[28px] flex-shrink-0"></div>
+                        <div className="aspect-square mb-3 w-full flex flex-col justify-center">
                             <label className="text-xs font-bold uppercase text-indigo-400 mb-2">Item Name</label>
                             <input 
                                 type="text"
@@ -250,15 +250,15 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                                 Cancel
                             </button>
                         </div>
-                        <div className="h-14 mt-auto w-full"></div>
+                        <div className="h-14 mt-auto w-full flex-shrink-0"></div>
                     </form>
                 ) : (
                     <div 
                         onClick={() => setIsAdding(true)}
-                        className="bg-slate-900/20 border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl p-4 flex flex-col relative group transition-all h-full w-full cursor-pointer"
+                        className="bg-slate-900/20 border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl p-4 flex flex-col h-full relative group transition-all w-full cursor-pointer"
                     >
-                        <div className="mb-3 min-h-[28px]"></div>
-                        <div className="aspect-[3/4] mb-3 w-full flex flex-col items-center justify-center">
+                        <div className="mb-3 min-h-[28px] flex-shrink-0"></div>
+                        <div className="aspect-square mb-3 w-full flex flex-col items-center justify-center">
                             <div className="p-4 bg-slate-900 rounded-full mb-4 group-hover:scale-110 transition-transform group-hover:bg-indigo-600">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -266,7 +266,7 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                             </div>
                             <span className="text-slate-500 font-bold group-hover:text-white">New Item Slot</span>
                         </div>
-                        <div className="h-14 mt-auto w-full"></div>
+                        <div className="h-14 mt-auto w-full flex-shrink-0"></div>
                     </div>
                 )}
             </div>

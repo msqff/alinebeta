@@ -4,8 +4,6 @@ import { Collection } from '../types';
 interface HeaderProps {
     onShowPatterns: () => void;
     hasGeneratedPatterns: boolean;
-    onSaveSession: () => void;
-    hasSessionData: boolean;
     activeCollection: Collection | null;
     onExitCollection: () => void;
     activeItemName?: string;
@@ -16,8 +14,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ 
     onShowPatterns, 
     hasGeneratedPatterns, 
-    onSaveSession, 
-    hasSessionData,
     activeCollection,
     onExitCollection,
     activeItemName,
@@ -101,14 +97,6 @@ export const Header: React.FC<HeaderProps> = ({
                             >
                                 Prompt Library
                             </button>
-                            {hasSessionData && (
-                                <button 
-                                    onClick={onSaveSession}
-                                    className="px-4 py-2 text-xs font-medium bg-indigo-600 border border-indigo-500 text-white rounded-lg hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-900/20"
-                                >
-                                    Save Session
-                                </button>
-                            )}
                         </>
                     )}
                     {hasGeneratedPatterns && (

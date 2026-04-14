@@ -44,7 +44,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesUpload, multiple 
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
                         </svg>
                     </div>
-                    <p className={`mb-1 text-sm text-slate-400 text-center group-hover:text-slate-300 ${compact ? 'text-xs leading-tight' : ''}`}><span className="font-semibold text-slate-200">Click to upload</span> {compact ? '' : 'or drag and drop'}</p>
+                    <p className={`mb-1 text-sm text-slate-400 text-center group-hover:text-slate-300 ${compact ? 'text-xs leading-tight' : ''}`}><span className="font-semibold text-slate-200">Click to upload</span> {compact ? '' : 'or select from the gallery below'}</p>
                     <p className={`text-[10px] text-slate-600 uppercase tracking-wide ${compact ? 'hidden' : ''}`}>PNG, JPG, WEBP</p>
                 </div>
                 <input id={inputId} type="file" multiple={multiple} className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} />

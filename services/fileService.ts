@@ -10,18 +10,33 @@ export interface SessionData {
     itemSlots: ItemSlot[];
 }
 
+const sanitizeForFirestore = (obj: any): any => {
+    if (obj === undefined) return null;
+    if (obj === null) return null;
+    if (typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+    
+    const sanitized: any = {};
+    for (const key in obj) {
+        if (obj[key] !== undefined) {
+            sanitized[key] = sanitizeForFirestore(obj[key]);
+        }
+    }
+    return sanitized;
+};
+
 export const saveSession = async (sessionData: SessionData, userId: string): Promise<void> => {
     try {
         // Save Collections
         const collectionsRef = collection(db, `users/${userId}/collections`);
         for (const item of sessionData.collections) {
-            await setDoc(doc(collectionsRef, item.id), item);
+            await setDoc(doc(collectionsRef, item.id), sanitizeForFirestore(item));
         }
 
         // Save Item Slots
         const slotsRef = collection(db, `users/${userId}/itemSlots`);
         for (const slot of sessionData.itemSlots) {
-            await setDoc(doc(slotsRef, slot.id), slot);
+            await setDoc(doc(slotsRef, slot.id), sanitizeForFirestore(slot));
         }
 
         // Save Assets
@@ -33,7 +48,7 @@ export const saveSession = async (sessionData: SessionData, userId: string): Pro
         ];
 
         for (const asset of allAssets) {
-            await setDoc(doc(assetsRef, asset.id), asset);
+            await setDoc(doc(assetsRef, asset.id), sanitizeForFirestore(asset));
         }
     } catch (error) {
         console.error('Failed to save session:', error);

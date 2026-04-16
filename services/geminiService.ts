@@ -581,7 +581,33 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
         throw new Error("Failed to parse JSON from model response.");
     }
 
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    // Assign IDs to all generated items
+    if (parsed.sections) {
+        parsed.sections.forEach((section: any) => {
+            section.id = self.crypto.randomUUID();
+            if (section.items) {
+                section.items.forEach((item: any) => {
+                    item.id = self.crypto.randomUUID();
+                });
+            }
+        });
+    }
+    if (parsed.bomData) {
+        parsed.bomData.forEach((row: any) => row.id = self.crypto.randomUUID());
+    }
+    if (parsed.sizingData) {
+        parsed.sizingData.forEach((row: any) => row.id = self.crypto.randomUUID());
+    }
+    if (parsed.costingData) {
+        parsed.costingData.forEach((row: any) => row.id = self.crypto.randomUUID());
+    }
+    if (parsed.placementData) {
+        parsed.placementData.forEach((row: any) => row.id = self.crypto.randomUUID());
+    }
+
+    return parsed;
 };
 
 export const generateProductReview = async (image: ImageSource, additionalImages: ImageSource[] = [], techPack?: TechPackSection[]): Promise<ProductReviewResult> => {

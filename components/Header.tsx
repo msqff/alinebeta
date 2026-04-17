@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Collection } from '../types';
 
 interface HeaderProps {
@@ -9,6 +9,7 @@ interface HeaderProps {
     activeItemName?: string;
     onExitItem?: () => void;
     onShowPromptLibrary: () => void;
+    onSignOut: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -18,8 +19,22 @@ export const Header: React.FC<HeaderProps> = ({
     onExitCollection,
     activeItemName,
     onExitItem,
-    onShowPromptLibrary
+    onShowPromptLibrary,
+    onSignOut
 }) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     return (
         <header className="px-6 py-3 border-b border-white/5 bg-slate-950/40 backdrop-blur-lg sticky top-0 z-30 flex-shrink-0">
             <div className="max-w-screen-2xl mx-auto flex justify-between items-center w-full">
@@ -89,24 +104,53 @@ export const Header: React.FC<HeaderProps> = ({
                             Switch Collection
                         </button>
                     )}
-                    {!activeItemName && (
-                        <>
-                            <button 
-                                onClick={onShowPromptLibrary}
-                                className="px-4 py-2 text-xs font-medium bg-white/5 border border-white/10 text-slate-300 rounded-lg hover:bg-white/10 hover:text-white transition-all"
-                            >
-                                Prompt Library
-                            </button>
-                        </>
-                    )}
-                    {hasGeneratedPatterns && (
-                         <button 
-                            onClick={onShowPatterns}
-                            className="px-4 py-2 text-xs font-medium text-indigo-300 hover:text-indigo-100 transition-colors"
+                    
+                    {/* Persistent Menu */}
+                    <div className="relative" ref={menuRef}>
+                        <button 
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="px-4 py-2 flex items-center gap-2 text-xs font-medium bg-white/5 border border-white/10 text-slate-300 rounded-lg hover:bg-white/10 hover:text-white transition-all"
                         >
-                            View Patterns
+                            Menu
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
-                    )}
+
+                        {isMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+                                <button 
+                                    onClick={() => {
+                                        onShowPromptLibrary();
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors border-b border-white/5"
+                                >
+                                    Prompt Library
+                                </button>
+                                {hasGeneratedPatterns && (
+                                    <button 
+                                        onClick={() => {
+                                            onShowPatterns();
+                                            setIsMenuOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-3 text-sm text-indigo-300 hover:bg-indigo-500/10 hover:text-indigo-200 transition-colors border-b border-white/5"
+                                    >
+                                        Pattern Library
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => {
+                                        onSignOut();
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-400/10 transition-colors"
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </header>

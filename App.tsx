@@ -29,7 +29,7 @@ import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generate
 import { saveSession, loadSession, SessionData } from './services/fileService';
 import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, getDisplaySrc } from './types';
 import { auth } from './firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User, signOut } from 'firebase/auth';
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -79,6 +79,16 @@ const App: React.FC = () => {
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Login failed", error);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            // Optionally clear state if needed, though unmounting/remounting or onAuthStateChanged will handle most.
+            setUser(null);
+        } catch (error) {
+            console.error("Logout failed", error);
         }
     };
 
@@ -143,6 +153,19 @@ const App: React.FC = () => {
                 name: name
             }));
             setItemSlots(prev => [...prev, ...newSlots]);
+        }
+    };
+
+    const handleDeleteCollection = (collectionId: string) => {
+        setCollections(prev => prev.filter(c => c.id !== collectionId));
+        setItemSlots(prev => prev.filter(s => s.collectionId !== collectionId));
+        setIdeationGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
+        setFinalGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
+        setGeneratedPatterns(prev => prev.filter(p => p.collectionId !== collectionId));
+        if (activeCollection?.id === collectionId) {
+            setActiveCollection(null);
+            setActiveSlotId(null);
+            setActiveTool(null);
         }
     };
 
@@ -724,6 +747,7 @@ const App: React.FC = () => {
                 collections={collections}
                 onSelectCollection={handleSelectCollection}
                 onCreateCollection={handleCreateCollection}
+                onDeleteCollection={handleDeleteCollection}
             />
         );
     }
@@ -821,6 +845,7 @@ const App: React.FC = () => {
                 activeItemName={activeSlot?.name}
                 onExitItem={handleExitItemWorkspace}
                 onShowPromptLibrary={() => setIsPromptLibraryOpen(true)}
+                onSignOut={handleLogout}
             />
             
             <main className="flex-grow flex flex-col p-6 md:p-8 max-w-screen-2xl mx-auto w-full">

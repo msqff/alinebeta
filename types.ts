@@ -19,6 +19,7 @@ export const getDisplaySrc = (source: ImageSource | undefined): string => {
 export interface Collection {
     id: string;
     name: string;
+    targetAudience: string;
     masterMoodBoard: ImageSource;
     extractedPalette: string[]; // Array of Hex codes
     styleDna: string; // Summary of the aesthetic

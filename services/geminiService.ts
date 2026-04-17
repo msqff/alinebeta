@@ -163,6 +163,62 @@ export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ sty
     return JSON.parse(response.text || '{}');
 };
 
+export const generateCollectionIntakeFromText = async (brief: string, audience: string): Promise<{ styleDna: string, palette: string[] }> => {
+    const ai = getAI();
+    const prompt = `Act as a Fashion Creative Director. I am starting a new collection. Target audience: ${audience}. Design brief: ${brief}. Generate a cohesive 'Style DNA' (a concise 50-word paragraph describing the aesthetic, silhouettes, and textures) and extract a 5-color hex code 'Palette' that perfectly represents this brief. Return strict JSON format: { "styleDna": "string", "palette": ["#hex", "#hex", "#hex", "#hex", "#hex"] }.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 }
+        }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("API did not return content.");
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Failed to parse JSON from model response.");
+    
+    return JSON.parse(jsonMatch[0]);
+};
+
+export const generateMoodBoardImage = async (styleDna: string, palette: string[], audience: string): Promise<ImageSource> => {
+    const ai = getAI();
+    const prompt = `A high-end fashion mood board collage for a ${audience} collection. Aesthetic: ${styleDna}. Color palette: ${palette.join(', ')}. Include editorial photography, fabric swatches, and abstract textures. Photorealistic, professional fashion design presentation.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: {
+            parts: [{ text: prompt }]
+        },
+        config: {
+            imageConfig: {
+                aspectRatio: "16:9",
+                imageSize: "1K"
+            }
+        }
+    });
+
+    let base64Image = "";
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+        if (part.inlineData) {
+            base64Image = part.inlineData.data;
+            break;
+        }
+    }
+
+    if (!base64Image) {
+        throw new Error("Failed to generate image from Gemini API.");
+    }
+
+    const url = await uploadBase64(base64Image, 'image/jpeg');
+    return { url };
+};
+
 export const generateItemSuggestions = async (
     collectionName: string,
     styleDna: string,

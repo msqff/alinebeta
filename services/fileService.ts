@@ -1,6 +1,6 @@
 import { GalleryAsset, GeneratedPattern, Collection, ItemSlot, GalleryItem, TechPackAsset, ProductReviewAsset } from '../types';
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 
 export interface SessionData {
     ideationGalleryItems: GalleryAsset[];
@@ -16,39 +16,56 @@ const sanitizeForFirestore = (obj: any): any => {
     if (typeof obj !== 'object') return obj;
     if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
     
+    // Sort keys to ensure consistent JSON.stringify matching
     const sanitized: any = {};
-    for (const key in obj) {
+    Object.keys(obj).sort().forEach(key => {
         if (obj[key] !== undefined) {
             sanitized[key] = sanitizeForFirestore(obj[key]);
         }
-    }
+    });
     return sanitized;
 };
 
+// Track the last saved state stringified to prevent unnecessary write operations
+const lastSavedState = new Map<string, string>();
+
 export const saveSession = async (sessionData: SessionData, userId: string): Promise<void> => {
     try {
-        // Save Collections
-        const collectionsRef = collection(db, `users/${userId}/collections`);
-        for (const item of sessionData.collections) {
-            await setDoc(doc(collectionsRef, item.id), sanitizeForFirestore(item));
-        }
+        const batch = writeBatch(db);
+        let writeCount = 0;
 
-        // Save Item Slots
-        const slotsRef = collection(db, `users/${userId}/itemSlots`);
-        for (const slot of sessionData.itemSlots) {
-            await setDoc(doc(slotsRef, slot.id), sanitizeForFirestore(slot));
-        }
+        const processItems = (items: any[], collectionName: string) => {
+            const dbCollectionRef = collection(db, `users/${userId}/${collectionName}`);
+            for (const item of items) {
+                const sanitized = sanitizeForFirestore(item);
+                const stringified = JSON.stringify(sanitized);
+                const docPath = `users/${userId}/${collectionName}/${item.id}`;
+                
+                if (lastSavedState.get(docPath) !== stringified) {
+                    batch.set(doc(dbCollectionRef, item.id), sanitized);
+                    lastSavedState.set(docPath, stringified);
+                    writeCount++;
+                }
+            }
+        };
 
-        // Save Assets
-        const assetsRef = collection(db, `users/${userId}/assets`);
+        // Process Collections
+        processItems(sessionData.collections, 'collections');
+
+        // Process Item Slots
+        processItems(sessionData.itemSlots, 'itemSlots');
+
+        // Process Assets
         const allAssets = [
             ...sessionData.ideationGalleryItems.map(a => ({ ...a, _assetGroup: 'ideation' })),
             ...sessionData.finalGalleryItems.map(a => ({ ...a, _assetGroup: 'final' })),
             ...sessionData.generatedPatterns.map(a => ({ ...a, _assetGroup: 'pattern' }))
         ];
+        processItems(allAssets, 'assets');
 
-        for (const asset of allAssets) {
-            await setDoc(doc(assetsRef, asset.id), sanitizeForFirestore(asset));
+        if (writeCount > 0) {
+            await batch.commit();
+            console.log(`Saved ${writeCount} changes to Firestore.`);
         }
     } catch (error) {
         console.error('Failed to save session:', error);
@@ -56,17 +73,64 @@ export const saveSession = async (sessionData: SessionData, userId: string): Pro
     }
 };
 
+export const deleteCollectionFromDb = async (collectionId: string, userId: string): Promise<void> => {
+    try {
+        const batch = writeBatch(db);
+        
+        // Delete collection doc
+        const colPath = `users/${userId}/collections/${collectionId}`;
+        batch.delete(doc(db, colPath));
+        lastSavedState.delete(colPath);
+
+        // Delete associated item slots
+        const slotsSnapshot = await getDocs(query(collection(db, `users/${userId}/itemSlots`), where("collectionId", "==", collectionId)));
+        for (const d of slotsSnapshot.docs) {
+            batch.delete(d.ref);
+            lastSavedState.delete(`users/${userId}/itemSlots/${d.id}`);
+        }
+
+        // Delete associated assets
+        const assetsSnapshot = await getDocs(query(collection(db, `users/${userId}/assets`), where("collectionId", "==", collectionId)));
+        for (const d of assetsSnapshot.docs) {
+            batch.delete(d.ref);
+            lastSavedState.delete(`users/${userId}/assets/${d.id}`);
+        }
+        
+        await batch.commit();
+    } catch (error) {
+        console.error("Failed to delete collection data", error);
+        throw error;
+    }
+};
+
 export const loadSession = async (userId: string): Promise<SessionData> => {
     try {
+        // Clear local cache when loading to prevent cross-user state issues if accounts are switched
+        lastSavedState.clear();
+
         const [collectionsSnap, slotsSnap, assetsSnap] = await Promise.all([
             getDocs(collection(db, `users/${userId}/collections`)),
             getDocs(collection(db, `users/${userId}/itemSlots`)),
             getDocs(collection(db, `users/${userId}/assets`))
         ]);
 
-        const collections = collectionsSnap.docs.map(d => d.data() as Collection);
-        const itemSlots = slotsSnap.docs.map(d => d.data() as ItemSlot);
-        const allAssets = assetsSnap.docs.map(d => d.data());
+        const collections = collectionsSnap.docs.map(d => {
+            const data = d.data() as Collection;
+            lastSavedState.set(`users/${userId}/collections/${d.id}`, JSON.stringify(sanitizeForFirestore(data)));
+            return data;
+        });
+
+        const itemSlots = slotsSnap.docs.map(d => {
+            const data = d.data() as ItemSlot;
+            lastSavedState.set(`users/${userId}/itemSlots/${d.id}`, JSON.stringify(sanitizeForFirestore(data)));
+            return data;
+        });
+
+        const allAssets = assetsSnap.docs.map(d => {
+            const data = d.data();
+            lastSavedState.set(`users/${userId}/assets/${d.id}`, JSON.stringify(sanitizeForFirestore(data)));
+            return data;
+        });
 
         const data: SessionData = {
             ideationGalleryItems: [],

@@ -26,7 +26,7 @@ import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
-import { saveSession, loadSession, SessionData } from './services/fileService';
+import { saveSession, loadSession, SessionData, deleteCollectionFromDb } from './services/fileService';
 import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, getDisplaySrc } from './types';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User, signOut } from 'firebase/auth';
@@ -122,7 +122,7 @@ const App: React.FC = () => {
     useEffect(() => {
         if (!isInitialized || !user) return;
 
-        const autoSave = async () => {
+        const timeoutId = setTimeout(async () => {
             try {
                 await saveSession({ 
                     ideationGalleryItems, 
@@ -131,14 +131,13 @@ const App: React.FC = () => {
                     collections,
                     itemSlots
                 }, user.uid);
-
             } catch (err) {
                 console.error("Auto-save failed", err);
             }
-        };
+        }, 2000); // 2-second debounce
 
-        autoSave();
-    }, [collections, itemSlots, ideationGalleryItems, finalGalleryItems, generatedPatterns, isInitialized]);
+        return () => clearTimeout(timeoutId);
+    }, [collections, itemSlots, ideationGalleryItems, finalGalleryItems, generatedPatterns, isInitialized, user]);
 
     // Collection Management
     const handleCreateCollection = (newCollection: Collection, initialItems: string[] = []) => {
@@ -156,16 +155,26 @@ const App: React.FC = () => {
         }
     };
 
-    const handleDeleteCollection = (collectionId: string) => {
-        setCollections(prev => prev.filter(c => c.id !== collectionId));
-        setItemSlots(prev => prev.filter(s => s.collectionId !== collectionId));
-        setIdeationGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
-        setFinalGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
-        setGeneratedPatterns(prev => prev.filter(p => p.collectionId !== collectionId));
-        if (activeCollection?.id === collectionId) {
-            setActiveCollection(null);
-            setActiveSlotId(null);
-            setActiveTool(null);
+    const handleDeleteCollection = async (collectionId: string) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            await deleteCollectionFromDb(collectionId, user.uid);
+            setCollections(prev => prev.filter(c => c.id !== collectionId));
+            setItemSlots(prev => prev.filter(s => s.collectionId !== collectionId));
+            setIdeationGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
+            setFinalGalleryItems(prev => prev.filter(i => i.collectionId !== collectionId));
+            setGeneratedPatterns(prev => prev.filter(p => p.collectionId !== collectionId));
+            if (activeCollection?.id === collectionId) {
+                setActiveCollection(null);
+                setActiveSlotId(null);
+                setActiveTool(null);
+            }
+        } catch (e) {
+            console.error("Failed to delete collection from DB:", e);
+            setError("Failed to delete collection from database.");
+        } finally {
+            setIsLoading(false);
         }
     };
 

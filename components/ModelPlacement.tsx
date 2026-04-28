@@ -51,7 +51,7 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
                     <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-slate-400 flex items-center"><span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs flex items-center justify-center mr-3 border border-indigo-500/30">1</span> Product Source</h3>
                     {productImagePreview ? (
                          <div className="relative group flex-grow flex items-center justify-center bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden p-4">
-                            <img src={productImagePreview} alt="Product" className="max-w-full max-h-[450px] object-contain drop-shadow-xl" />
+                            <img src={productImagePreview || undefined} alt="Product" className="max-w-full max-h-[450px] object-contain drop-shadow-xl" />
                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                                 <button onClick={() => { setProductImage(null); setProductImagePreview(null); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-colors text-sm font-medium">
                                     Change Image

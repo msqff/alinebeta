@@ -260,7 +260,7 @@ export const TechPackDocument: React.FC<TechPackDocumentProps> = ({ techPack, se
           <Text style={styles.title}>{config.styleName}</Text>
           <Text style={styles.subtitle}>Technical Specification Pack</Text>
           
-          <Image src={techPack.src} style={styles.heroImage} />
+          <Image src={techPack.src || undefined} style={styles.heroImage} />
           
           <View style={styles.metadataGrid}>
             <View style={styles.metadataItem}>
@@ -412,7 +412,7 @@ export const TechPackDocument: React.FC<TechPackDocumentProps> = ({ techPack, se
           <Text style={styles.title}>Placement & Construction Guide</Text>
           
           <View style={styles.placementContainer}>
-            <Image src={techPack.src} style={styles.placementImage} />
+            <Image src={techPack.src || undefined} style={styles.placementImage} />
             {placementData.map((pin) => (
               <View key={pin.id} style={[styles.pin, { left: `${pin.x}%`, top: `${pin.y}%` }]}>
                 <Text style={styles.pinText}>{pin.pinNumber}</Text>
@@ -441,7 +441,7 @@ export const TechPackDocument: React.FC<TechPackDocumentProps> = ({ techPack, se
           <View style={styles.refGrid}>
             {techPack.additionalSources.map((source, idx) => (
               <View key={idx} style={styles.refImageContainer} wrap={false}>
-                <Image src={getDisplaySrc(source)} style={styles.refImage} />
+                <Image src={getDisplaySrc(source) || undefined} style={styles.refImage} />
               </View>
             ))}
           </View>

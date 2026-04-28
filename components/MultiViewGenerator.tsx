@@ -131,7 +131,7 @@ export const MultiViewGenerator: React.FC<MultiViewGeneratorProps> = ({ onGenera
                         <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-slate-400">Source Image (Front)</h3>
                          {baseImagePreview ? (
                              <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 mb-4">
-                                <img src={baseImagePreview} alt="Input" className="w-full h-auto max-h-[350px] object-contain p-2" />
+                                <img src={baseImagePreview || undefined} alt="Input" className="w-full h-auto max-h-[350px] object-contain p-2" />
                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                                     <button onClick={() => { setBaseImage(null); setBaseImagePreview(null); setGeneratedResults({}); setResultSources([]); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-colors text-sm font-medium">
                                         Change Image

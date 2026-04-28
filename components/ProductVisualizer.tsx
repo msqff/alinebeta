@@ -97,7 +97,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
                         <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-slate-400 flex items-center"><span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs flex items-center justify-center mr-3 border border-indigo-500/30">1</span> Input Sketch</h3>
                         {baseImagePreview ? (
                              <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80">
-                                <img src={baseImagePreview} alt="Input" className="w-full h-64 object-contain p-4" />
+                                <img src={baseImagePreview || undefined} alt="Input" className="w-full h-64 object-contain p-4" />
                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                                     <button onClick={() => { setBaseImage(null); setBaseImagePreview(null); }} className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-colors text-sm font-medium">
                                         Change Image
@@ -118,7 +118,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
                         
                         {patternImagePreview && (
                             <div className="mb-4 relative group w-full aspect-video rounded-xl overflow-hidden border border-slate-600">
-                                <img src={patternImagePreview} alt="Pattern" className="w-full h-full object-cover" />
+                                <img src={patternImagePreview || undefined} alt="Pattern" className="w-full h-full object-cover" />
                                 <button onClick={clearPattern} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-sm">
                                     <span className="text-xs font-bold">REMOVE</span>
                                 </button>
@@ -148,7 +148,7 @@ export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualis
                                     <div className="grid grid-cols-4 gap-2 mt-2">
                                         {localPatterns.map(p => (
                                             <div key={p.id} onClick={() => selectLocalPattern(p)} className={`aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedPatternId === p.id ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-transparent hover:border-slate-600'}`}>
-                                                <img src={p.src} alt={p.prompt} className="w-full h-full object-cover" />
+                                                <img src={p.src || undefined} alt={p.prompt} className="w-full h-full object-cover" />
                                             </div>
                                         ))}
                                     </div>

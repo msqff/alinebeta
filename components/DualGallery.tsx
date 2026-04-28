@@ -11,6 +11,7 @@ interface DualGalleryProps {
     onGenerateTechPack: (item: GalleryItem) => void;
     onPromoteItem: (item: GalleryAsset) => void;
     onDemoteItem: (item: GalleryAsset) => void;
+    onDeleteAsset: (item: GalleryAsset) => void;
     onReview?: (item: GalleryItem) => void;
     onShopperPulse?: (item: GalleryItem) => void;
     selectedItem: GalleryItem | null;
@@ -62,6 +63,7 @@ export const DualGallery: React.FC<DualGalleryProps> = (props) => {
                         onGenerateTechPack={props.onGenerateTechPack}
                         onPromoteItem={props.onPromoteItem}
                         onDemoteItem={props.onDemoteItem}
+                        onDeleteAsset={props.onDeleteAsset}
                         onReview={props.onReview}
                         onShopperPulse={props.onShopperPulse}
                         selectedItem={props.selectedItem}

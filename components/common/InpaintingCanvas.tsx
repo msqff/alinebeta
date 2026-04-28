@@ -186,7 +186,7 @@ const InpaintingCanvas = React.forwardRef<InpaintingCanvasRef, InpaintingCanvasP
             style={{ width: dimensions.width, height: dimensions.height, maxWidth: '100%', maxHeight: 'calc(70vh - 100px)'}}
         >
             <img 
-                src={imageSrc} 
+                src={imageSrc || undefined} 
                 alt="Input for editing"
                 className="absolute inset-0 w-full h-full object-contain pointer-events-none"
             />

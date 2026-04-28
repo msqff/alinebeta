@@ -73,7 +73,7 @@ export const ShopperPulseModal: React.FC<ShopperPulseModalProps> = ({ item, onCl
 
                     <div className="flex space-x-6 mb-6">
                         <div className="w-24 h-32 flex-shrink-0 rounded-lg overflow-hidden border border-slate-700">
-                            <img src={item.src} alt="Design" className="w-full h-full object-cover" />
+                            <img src={item.src || undefined} alt="Design" className="w-full h-full object-cover" />
                         </div>
                         <form onSubmit={handleRunPulse} className="flex-grow flex flex-col justify-center space-y-4">
                             <div>

@@ -87,7 +87,7 @@ export const MoodBoardAnalyst: React.FC<MoodBoardAnalystProps> = ({ onAnalysisCo
                         {generatedSketches.map((sketch, index) => (
                             <img 
                                 key={index}
-                                src={getDisplaySrc(sketch)} 
+                                src={getDisplaySrc(sketch) || undefined} 
                                 alt={`Generated sketch ${index + 1}`}
                                 className="w-full h-auto object-contain rounded-xl bg-white shadow-lg border border-white/20 hover:scale-105 transition-transform duration-300"
                             />
@@ -118,7 +118,7 @@ export const MoodBoardAnalyst: React.FC<MoodBoardAnalystProps> = ({ onAnalysisCo
                         <div className="flex-grow grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4 overflow-y-auto max-h-96 custom-scrollbar p-2">
                             {uploadedFilePreviews.map((file, index) => (
                                 <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-700 shadow-md">
-                                    <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                                    <img src={file.url || undefined} alt={file.name} className="w-full h-full object-cover" />
                                     <button onClick={() => handleFileRemove(index)} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-red-500/80">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                                     </button>

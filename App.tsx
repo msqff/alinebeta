@@ -26,7 +26,7 @@ import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
-import { saveSession, loadSession, SessionData, deleteCollectionFromDb } from './services/fileService';
+import { saveSession, loadSession, SessionData, deleteCollectionFromDb, deleteItemSlotFromDb, deleteAssetFromDb } from './services/fileService';
 import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, getDisplaySrc } from './types';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User, signOut } from 'firebase/auth';
@@ -173,6 +173,27 @@ const App: React.FC = () => {
         } catch (e) {
             console.error("Failed to delete collection from DB:", e);
             setError("Failed to delete collection from database.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteItemSlot = async (slotId: string) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            await deleteItemSlotFromDb(slotId, user.uid);
+            setItemSlots(prev => prev.filter(s => s.id !== slotId));
+            setIdeationGalleryItems(prev => prev.filter(i => i.itemSlotId !== slotId));
+            setFinalGalleryItems(prev => prev.filter(i => i.itemSlotId !== slotId));
+            setGeneratedPatterns(prev => prev.filter(p => p.itemSlotId !== slotId));
+            if (activeSlotId === slotId) {
+                setActiveSlotId(null);
+                setActiveTool(null);
+            }
+        } catch (e) {
+            console.error("Failed to delete item slot from DB:", e);
+            setError("Failed to delete item slot from database.");
         } finally {
             setIsLoading(false);
         }
@@ -707,6 +728,25 @@ const App: React.FC = () => {
         }
     }, [selectedImageForTool]);
 
+    const handleDeleteAsset = useCallback(async (itemToDelete: GalleryAsset) => {
+        if (!user) return;
+        
+        try {
+            await deleteAssetFromDb(itemToDelete.id, user.uid);
+            
+            // Remove from ideation (assuming users can only delete from ideation as per rules)
+            setIdeationGalleryItems(prev => prev.filter(i => i.id !== itemToDelete.id));
+            
+            if (selectedImageForTool?.id === itemToDelete.id) {
+                setSelectedImageForTool(null);
+                setActiveTool(null);
+            }
+        } catch (e) {
+            console.error("Failed to delete asset:", e);
+            setError("Failed to delete asset from database.");
+        }
+    }, [selectedImageForTool, user]);
+
     const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => {
         const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData } : item);
         setFinalGalleryItems(updater);
@@ -746,6 +786,7 @@ const App: React.FC = () => {
                     onSelectItem={handleSelectSlotItem}
                     onOpenTool={handleOpenToolForSlot}
                     onEnterItem={handleEnterItemWorkspace}
+                    onDeleteItemSlot={handleDeleteItemSlot}
                     collection={activeCollection}
                 />
             );
@@ -831,6 +872,7 @@ const App: React.FC = () => {
                     onGenerateTechPack={handleGenerateTechPack}
                     onPromoteItem={handlePromoteItem}
                     onDemoteItem={handleDemoteItem}
+                    onDeleteAsset={handleDeleteAsset}
                     onReview={handleRunComplianceCheck}
                 />
             )}
@@ -874,6 +916,7 @@ const App: React.FC = () => {
                     onGenerateTechPack={handleGenerateTechPack}
                     onPromoteItem={handlePromoteItem}
                     onDemoteItem={handleDemoteItem}
+                    onDeleteAsset={handleDeleteAsset}
                     onReview={handleRunComplianceCheck}
                     onShopperPulse={(item) => setItemPendingShopperPulse(item)}
                     selectedItem={selectedImageForTool}

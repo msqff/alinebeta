@@ -47,7 +47,7 @@ export const MultiViewModal: React.FC<MultiViewModalProps> = ({ asset, onClose }
                                         <span className="text-xs font-bold text-white uppercase tracking-wider">{viewItem.view}</span>
                                     </div>
                                     <img 
-                                        src={src} 
+                                        src={src || undefined} 
                                         alt={viewItem.view} 
                                         className="w-full h-auto object-contain bg-slate-800"
                                     />

@@ -75,14 +75,14 @@ const FullscreenCard: React.FC<{
                     {(item as MultiViewAsset).views.slice(0, 4).map((view, i) => (
                         <img 
                             key={i} 
-                            src={getDisplaySrc(view.source)} 
+                            src={getDisplaySrc(view.source) || undefined} 
                             className="w-full h-full object-cover" 
                             alt={view.view} 
                         />
                     ))}
                 </div>
             ) : (
-                <img src={imageSrc} alt={promptText || item.tag} className="w-full h-full object-cover" />
+                <img src={imageSrc || undefined} alt={promptText || item.tag} className="w-full h-full object-cover" />
             )}
             
             <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">

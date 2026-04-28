@@ -490,7 +490,7 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                 className={`relative inline-block ${activeTab === 'placement' ? 'cursor-crosshair' : ''}`} 
                                 onClick={handleImageClick}
                             >
-                                <img src={techPack.src} alt="Tech pack source image" className="max-w-full h-auto max-h-[50vh] rounded-lg block pointer-events-none" />
+                                <img src={techPack.src || undefined} alt="Tech pack source image" className="max-w-full h-auto max-h-[50vh] rounded-lg block pointer-events-none" />
                                 {activeTab === 'placement' && placementData.map(pin => (
                                     <div 
                                         key={pin.id} 
@@ -511,7 +511,7 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                 <div className="grid grid-cols-2 gap-2">
                                     {techPack.additionalSources.map((source, idx) => (
                                         <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                                            <img src={getDisplaySrc(source)} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
+                                            <img src={getDisplaySrc(source) || undefined} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
                                         </div>
                                     ))}
                                 </div>

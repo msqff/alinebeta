@@ -68,7 +68,7 @@ export const ProductReviewModal: React.FC<ProductReviewModalProps> = ({ asset, o
                 <div className="w-full md:w-5/12 bg-slate-900/80 p-8 flex flex-col items-center border-b md:border-b-0 md:border-r border-slate-700 relative overflow-y-auto custom-scrollbar">
                      <div className="w-full flex flex-col items-center justify-center min-h-[50%]">
                         <img 
-                            src={asset.src} 
+                            src={asset.src || undefined} 
                             alt="Audited Design" 
                             className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-2xl border border-slate-700" 
                         />
@@ -83,7 +83,7 @@ export const ProductReviewModal: React.FC<ProductReviewModalProps> = ({ asset, o
                             <div className="grid grid-cols-2 gap-3">
                                 {asset.additionalSources.map((source, idx) => (
                                     <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                                        <img src={getDisplaySrc(source)} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
+                                        <img src={getDisplaySrc(source) || undefined} className="w-full h-full object-cover" alt={`Ref ${idx}`} />
                                     </div>
                                 ))}
                             </div>

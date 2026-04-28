@@ -103,6 +103,29 @@ export const deleteCollectionFromDb = async (collectionId: string, userId: strin
     }
 };
 
+export const deleteItemSlotFromDb = async (slotId: string, userId: string): Promise<void> => {
+    try {
+        const batch = writeBatch(db);
+        
+        // Delete item slot doc
+        const slotPath = `users/${userId}/itemSlots/${slotId}`;
+        batch.delete(doc(db, slotPath));
+        lastSavedState.delete(slotPath);
+
+        // Delete associated assets (where itemSlotId == slotId)
+        const assetsSnapshot = await getDocs(query(collection(db, `users/${userId}/assets`), where("itemSlotId", "==", slotId)));
+        for (const d of assetsSnapshot.docs) {
+            batch.delete(d.ref);
+            lastSavedState.delete(`users/${userId}/assets/${d.id}`);
+        }
+        
+        await batch.commit();
+    } catch (error) {
+        console.error("Failed to delete item slot data", error);
+        throw error;
+    }
+};
+
 export const loadSession = async (userId: string): Promise<SessionData> => {
     try {
         // Clear local cache when loading to prevent cross-user state issues if accounts are switched
@@ -161,6 +184,19 @@ export const loadSession = async (userId: string): Promise<SessionData> => {
         return data;
     } catch (error) {
         console.error('Failed to load session:', error);
+        throw error;
+    }
+};
+
+export const deleteAssetFromDb = async (assetId: string, userId: string): Promise<void> => {
+    try {
+        const batch = writeBatch(db);
+        const assetPath = `users/${userId}/assets/${assetId}`;
+        batch.delete(doc(db, assetPath));
+        lastSavedState.delete(assetPath);
+        await batch.commit();
+    } catch (error) {
+        console.error("Failed to delete asset data", error);
         throw error;
     }
 };

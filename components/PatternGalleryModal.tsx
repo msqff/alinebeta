@@ -45,7 +45,7 @@ export const PatternGalleryModal: React.FC<PatternGalleryModalProps> = ({ patter
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                             {patterns.map((pattern) => (
                                 <div key={pattern.id} className="relative group flex-shrink-0 rounded-xl overflow-hidden shadow-lg border border-slate-700">
-                                    <img src={pattern.src} alt={pattern.prompt} className="w-full h-auto aspect-square object-cover" />
+                                    <img src={pattern.src || undefined} alt={pattern.prompt} className="w-full h-auto aspect-square object-cover" />
                                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col p-4 justify-end backdrop-blur-sm">
                                         <p className="text-xs text-white mb-3 line-clamp-3 font-medium text-center">{pattern.prompt}</p>
                                         <button 

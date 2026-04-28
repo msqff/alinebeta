@@ -40,7 +40,7 @@ export const TechPackGenerator: React.FC<TechPackGeneratorProps> = ({ onGenerate
                         <div className="w-full flex flex-col items-center">
                             <h3 className="font-bold mb-6 text-sm uppercase tracking-wide text-slate-400 text-center">Selected Garment Image</h3>
                             <div className="relative group overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 w-full max-w-sm mb-6">
-                                <img src={inputImage.src} alt="Selected" className="w-full h-64 object-contain p-4" />
+                                <img src={inputImage.src || undefined} alt="Selected" className="w-full h-64 object-contain p-4" />
                             </div>
                             <button 
                                 onClick={onProceedWithImage}

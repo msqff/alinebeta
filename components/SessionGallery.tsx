@@ -12,12 +12,13 @@ interface SessionGalleryProps {
     onGenerateTechPack: (item: GalleryItem) => void;
     onPromoteItem: (item: GalleryAsset) => void;
     onDemoteItem: (item: GalleryAsset) => void;
+    onDeleteAsset: (item: GalleryAsset) => void;
     onReview?: (item: GalleryItem) => void;
     onShopperPulse?: (item: GalleryItem) => void;
     selectedItem: GalleryItem | null;
 }
 
-export const SessionGallery: React.FC<SessionGalleryProps> = ({ galleryType, items, onSelectItem, onEditItem, onShowTraceability, onGenerateTechPack, onPromoteItem, onDemoteItem, onReview, onShopperPulse, selectedItem }) => {
+export const SessionGallery: React.FC<SessionGalleryProps> = ({ galleryType, items, onSelectItem, onEditItem, onShowTraceability, onGenerateTechPack, onPromoteItem, onDemoteItem, onDeleteAsset, onReview, onShopperPulse, selectedItem }) => {
     return (
         <div className="flex space-x-4 overflow-x-auto pb-2 px-2 custom-scrollbar">
             {items.length > 0 ? (
@@ -33,6 +34,7 @@ export const SessionGallery: React.FC<SessionGalleryProps> = ({ galleryType, ite
                         onGenerateTechPack={() => onGenerateTechPack(item as GalleryItem)}
                         onPromote={() => onPromoteItem(item)}
                         onDemote={() => onDemoteItem(item)}
+                        onDelete={() => onDeleteAsset(item)}
                         onReview={onReview ? () => onReview(item as GalleryItem) : undefined}
                         onShopperPulse={onShopperPulse ? () => onShopperPulse(item as GalleryItem) : undefined}
                     />

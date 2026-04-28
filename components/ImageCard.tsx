@@ -12,11 +12,12 @@ interface ImageCardProps {
     onGenerateTechPack: () => void;
     onPromote: () => void;
     onDemote: () => void;
+    onDelete: () => void;
     onReview?: () => void;
     onShopperPulse?: () => void;
 }
 
-export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelected, onSelect, onEdit, onShowTraceability, onGenerateTechPack, onPromote, onDemote, onReview, onShopperPulse }) => {
+export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelected, onSelect, onEdit, onShowTraceability, onGenerateTechPack, onPromote, onDemote, onDelete, onReview, onShopperPulse }) => {
     const tagColor = {
         'Sketch': 'bg-blue-500',
         'Studio Image': 'bg-purple-500',
@@ -60,6 +61,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
     const canShopperPulse = galleryType === 'finals' && (item.tag === 'Studio Image' || item.tag === 'Model Shot');
     const canPromote = galleryType === 'ideation';
     const canDemote = galleryType === 'finals';
+    const canDelete = galleryType === 'ideation';
 
     return (
         <div
@@ -71,14 +73,14 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
                     {(item as MultiViewAsset).views.slice(0, 4).map((view, i) => (
                         <img 
                             key={i} 
-                            src={getDisplaySrc(view.source)} 
+                            src={getDisplaySrc(view.source) || undefined} 
                             className="w-full h-full object-cover" 
                             alt={view.view} 
                         />
                     ))}
                 </div>
             ) : (
-                <img src={imageSrc} alt={promptText || item.tag} className="w-full h-full object-cover" />
+                <img src={imageSrc || undefined} alt={promptText || item.tag} className="w-full h-full object-cover" />
             )}
 
             <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center">
@@ -137,6 +139,11 @@ export const ImageCard: React.FC<ImageCardProps> = ({ item, galleryType, isSelec
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
                     </button>
                 )}
+                 {canDelete && (
+                     <button onClick={(e) => handleActionClick(e, onDelete)} className="p-1.5 bg-gray-800/60 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-opacity-80 hover:scale-110" aria-label="Delete Asset" title="Delete Asset">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                     </button>
+                 )}
             </div>
             
             <div className="absolute top-2 left-2 flex flex-col space-y-1.5">

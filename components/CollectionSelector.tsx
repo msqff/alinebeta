@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getDisplaySrc,  Collection, ImageSource } from '../types';
 import { FileUpload } from './common/FileUpload';
 import { analyzeCollectionIntake, fileToBase64, generateItemSuggestions, generateCollectionIntakeFromText, generateMoodBoardImage } from '../services/geminiService';
@@ -196,7 +197,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
 
                             {moodBoardPreview ? (
                                 <div className="relative group rounded-xl overflow-hidden aspect-[4/3] border border-slate-700 bg-black">
-                                    <img src={moodBoardPreview} alt="Mood Board" className="w-full h-full object-contain" />
+                                    <img src={moodBoardPreview || undefined} alt="Mood Board" className="w-full h-full object-contain" />
                                     <button 
                                         onClick={() => { setMoodBoard(null); setMoodBoardPreview(null); }}
                                         className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -329,7 +330,7 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
                             onClick={() => onSelectCollection(collection)}
                         >
                             <img 
-                                src={getDisplaySrc(collection.masterMoodBoard)} 
+                                src={getDisplaySrc(collection.masterMoodBoard) || undefined} 
                                 alt={collection.name}
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                             />
@@ -362,8 +363,8 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
             </div>
 
             {/* Delete Confirmation Modal */}
-            {collectionToDelete && (
-                <div className="fixed inset-0 bg-slate-950/80 p-4 md:p-8 flex items-center justify-center z-50 overflow-auto">
+            {collectionToDelete && createPortal(
+                <div className="fixed inset-0 bg-slate-950/80 p-4 md:p-8 flex items-center justify-center z-[100] overflow-auto">
                     <div className="bg-slate-900 rounded-3xl p-6 md:p-8 max-w-md w-full border border-white/10 shadow-2xl animate-fade-in relative">
                         <div className="flex items-center gap-3 mb-4 text-red-400">
                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -392,7 +393,8 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

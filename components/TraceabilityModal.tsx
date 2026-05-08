@@ -31,7 +31,7 @@ const tagColor: { [key in GalleryAsset['tag']]: string } = {
     'Multi-View': 'bg-orange-500',
 };
 
-const ImageNode: React.FC<{item: GalleryItem | TechPackAsset, onClick?: () => void}> = ({ item, onClick }) => {
+const ImageNode: React.FC<{item: GalleryItem | TechPackAsset, onClick?: () => void, isVariant?: boolean}> = ({ item, onClick, isVariant }) => {
     const prompt = 'prompt' in item ? item.prompt : '';
     
     return (
@@ -40,6 +40,11 @@ const ImageNode: React.FC<{item: GalleryItem | TechPackAsset, onClick?: () => vo
             onClick={onClick}
         >
             <div className={`relative group w-40 h-52 rounded-xl overflow-hidden border-2 mb-3 transition-all shadow-lg ${onClick ? 'border-slate-700 hover:border-indigo-500 hover:scale-105' : 'border-slate-700'}`}>
+                {isVariant && (
+                    <div className="absolute top-2 left-2 z-10 bg-indigo-600/90 backdrop-blur-sm text-[10px] font-bold text-white px-2 py-0.5 rounded text-xs">
+                        VARIANT
+                    </div>
+                )}
                 <img src={item.src || undefined} alt={prompt} className="w-full h-full object-cover bg-slate-900" />
                 <button
                     onClick={(e) => {
@@ -156,25 +161,28 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
                     </div>
                     
                     <div className="flex items-center justify-start space-x-6 p-6 bg-slate-900/30 rounded-xl overflow-x-auto custom-scrollbar">
-                        {lineage.map((item, index) => (
-                            <React.Fragment key={item.id}>
-                            {item.tag === 'Mood Board' ? (
-                                    <MoodBoardNode item={item as MoodBoardAsset} />
-                            ) : item.tag === 'Multi-View' ? (
-                                    <MultiViewNode item={item as MultiViewAsset} onClick={() => handleNodeClick(item, index)} />
-                            ) : (
-                                    <ImageNode item={item as GalleryItem | TechPackAsset} onClick={() => handleNodeClick(item, index)} />
-                            )}
-                            
-                                {index < lineage.length - 1 && (
-                                    <div className="text-slate-600 flex-shrink-0">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                        </svg>
-                                    </div>
+                        {lineage.map((item, index) => {
+                            const isVariant = index > 0 && lineage[index - 1].tag === item.tag;
+                            return (
+                                <React.Fragment key={item.id}>
+                                {item.tag === 'Mood Board' ? (
+                                        <MoodBoardNode item={item as MoodBoardAsset} />
+                                ) : item.tag === 'Multi-View' ? (
+                                        <MultiViewNode item={item as MultiViewAsset} onClick={() => handleNodeClick(item, index)} />
+                                ) : (
+                                        <ImageNode item={item as GalleryItem | TechPackAsset} onClick={() => handleNodeClick(item, index)} isVariant={isVariant} />
                                 )}
-                            </React.Fragment>
-                        ))}
+                                
+                                    {index < lineage.length - 1 && (
+                                        <div className="text-slate-600 flex-shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

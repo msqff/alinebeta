@@ -236,14 +236,16 @@ const App: React.FC = () => {
         setSelectedImageForTool(null);
     };
 
-    const handleSelectSlotItem = (slotId: string, type: 'sketch' | 'studio' | 'techpack') => {
+    const handleSelectSlotItem = (slotId: string, type: 'sketch' | 'studio' | 'techpack', variantId?: string) => {
         // IMPORTANT: Set active slot so subsequent actions are linked
         setActiveSlotId(slotId);
 
         const slot = itemSlots.find(s => s.id === slotId);
         if (!slot) return;
         
-        const assetId = type === 'sketch' ? slot.sketchId : type === 'studio' ? slot.studioImageId : slot.techPackId;
+        let assetId = type === 'sketch' ? slot.sketchId : type === 'studio' ? slot.studioImageId : slot.techPackId;
+        if (variantId) assetId = variantId;
+
         const asset = [...ideationGalleryItems, ...finalGalleryItems].find(a => a.id === assetId);
         
         if (asset) {
@@ -255,18 +257,18 @@ const App: React.FC = () => {
         }
     };
 
-    const handleOpenToolForSlot = (tool: Tool, slotId: string) => {
+    const handleOpenToolForSlot = (tool: Tool, slotId: string, variantId?: string) => {
         setActiveSlotId(slotId);
         const slot = itemSlots.find(s => s.id === slotId);
         const allAssets = [...ideationGalleryItems, ...finalGalleryItems];
         
         // Pre-select image if moving down chain
-        if (tool === 'visualiser' && slot?.sketchId) {
-             const sketch = allAssets.find(i => i.id === slot.sketchId) as GalleryItem;
-             if (sketch) setSelectedImageForTool(sketch);
-        } else if (tool === 'techpack' && slot?.studioImageId) {
-             const studio = allAssets.find(i => i.id === slot.studioImageId) as GalleryItem;
-             if (studio) handleGenerateTechPack(studio); // Auto-trigger for slot
+        if (tool === 'visualiser') {
+             const sketchToUse = variantId ? allAssets.find(i => i.id === variantId) : allAssets.find(i => i.id === slot?.sketchId);
+             if (sketchToUse) setSelectedImageForTool(sketchToUse as GalleryItem);
+        } else if (tool === 'techpack') {
+             const studioToUse = variantId ? allAssets.find(i => i.id === variantId) : allAssets.find(i => i.id === slot?.studioImageId);
+             if (studioToUse) handleGenerateTechPack(studioToUse as GalleryItem); // Auto-trigger for slot
              return; 
         }
         
@@ -753,6 +755,25 @@ const App: React.FC = () => {
         }
     }, [selectedImageForTool, user]);
 
+    const handleDuplicateItem = useCallback((itemToDuplicate: GalleryAsset) => {
+        const duplicatedItem = JSON.parse(JSON.stringify(itemToDuplicate)) as GalleryAsset;
+        duplicatedItem.id = `${itemToDuplicate.id}-copy-${Date.now()}`;
+        
+        if (itemToDuplicate.parentId) {
+            duplicatedItem.parentId = itemToDuplicate.parentId;
+        } else {
+            duplicatedItem.parentId = itemToDuplicate.id;
+        }
+        
+        if ('prompt' in duplicatedItem && typeof duplicatedItem.prompt === 'string') {
+            duplicatedItem.prompt = `${duplicatedItem.prompt} (Copy)`;
+        } else if ('summary' in duplicatedItem && typeof duplicatedItem.summary === 'string') {
+             duplicatedItem.summary = `${duplicatedItem.summary} (Copy)`;
+        }
+        
+        setIdeationGalleryItems(prev => [...prev, duplicatedItem]);
+    }, []);
+
     const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => {
         const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData } : item);
         setFinalGalleryItems(updater);
@@ -793,6 +814,7 @@ const App: React.FC = () => {
                     onOpenTool={handleOpenToolForSlot}
                     onEnterItem={handleEnterItemWorkspace}
                     onDeleteItemSlot={handleDeleteItemSlot}
+                    onDuplicateItem={handleDuplicateItem}
                     collection={activeCollection}
                 />
             );
@@ -923,6 +945,7 @@ const App: React.FC = () => {
                     onPromoteItem={handlePromoteItem}
                     onDemoteItem={handleDemoteItem}
                     onDeleteAsset={handleDeleteAsset}
+                    onDuplicateItem={handleDuplicateItem}
                     onReview={handleRunComplianceCheck}
                     onShopperPulse={(item) => setItemPendingShopperPulse(item)}
                     selectedItem={selectedImageForTool}

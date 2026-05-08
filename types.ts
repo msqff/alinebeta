@@ -74,6 +74,7 @@ export interface MoodBoardAsset {
   sources: ImageSource[];
   summary: string;
   tag: 'Mood Board';
+  parentId?: string;
   collectionId?: string;
   itemSlotId?: string;
 }

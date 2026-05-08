@@ -9,13 +9,14 @@ interface ItemManagerProps {
     finalAssets: GalleryAsset[]; // Final assets in this collection
     onAddItem: (name: string) => void;
     onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
-    onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string) => void;
+    onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string, variantId?: string) => void;
     onEnterItem: (slotId: string) => void;
     onDeleteItemSlot: (slotId: string) => void;
+    onDuplicateItem?: (item: GalleryAsset) => void;
     collection: Collection;
 }
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onDeleteItemSlot, collection }) => {
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onDeleteItemSlot, onDuplicateItem, collection }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>([]);
@@ -47,18 +48,207 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
     // Helper to find asset by ID
     const getAsset = (id?: string) => assets.find(a => a.id === id);
 
+const ItemSlotCard: React.FC<{
+    slot: ItemSlot;
+    assets: GalleryAsset[];
+    finalAssets: GalleryAsset[];
+    onEnterItem: (id: string) => void;
+    onDuplicateItem?: (item: GalleryAsset) => void;
+    onDeleteItemSlot: (id: string) => void;
+    onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
+    onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string, variantId?: string) => void;
+}> = ({ slot, assets, finalAssets, onEnterItem, onDuplicateItem, onDeleteItemSlot, onSelectItem, onOpenTool }) => {
+    const getAsset = (id?: string) => assets.find(a => a.id === id);
+    const reversedFinalAssets = [...finalAssets].reverse();
+    
+    // Find the latest final or draft item for this slot
+    const finalStudio = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Studio Image');
+    const finalSketch = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Sketch');
+    const finalTechpack = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Tech Pack');
+
+    const sketch = finalSketch || getAsset(slot.sketchId);
+    const studio = finalStudio || getAsset(slot.studioImageId);
+    const techpack = finalTechpack || getAsset(slot.techPackId);
+    
+    // Priority: Studio -> Sketch
+    const initialHeroAsset = studio || sketch;
+    
+    // Filter root vs children for THIS slot
+    const slotAssets = [...assets, ...finalAssets].filter(a => a.itemSlotId === slot.id && (a.tag === 'Studio Image' || a.tag === 'Sketch'));
+    
+    // Unique deduplication since items might be in both assets (ideation) and finalAssets
+    const uniqueSlotAssets = Array.from(new Map(slotAssets.map(item => [item.id, item])).values());
+    
+    const rootItems = uniqueSlotAssets.filter(a => !a.parentId);
+    const childItems = uniqueSlotAssets.filter(a => a.parentId);
+    
+    // If the initialHeroAsset is a child, its root is its parent. Otherwise, it is the root.
+    const activeRootItem = initialHeroAsset 
+        ? (initialHeroAsset.parentId ? uniqueSlotAssets.find(a => a.id === initialHeroAsset.parentId) || initialHeroAsset : initialHeroAsset)
+        : undefined;
+
+    const [activeVariantId, setActiveVariantId] = useState<string | undefined>(activeRootItem?.id);
+
+    // Maintain sync if initialHeroAsset changes externally
+    useEffect(() => {
+        if (activeRootItem?.id) {
+             setActiveVariantId(prev => uniqueSlotAssets.find(a => a.id === prev) ? prev : activeRootItem.id);
+        }
+    }, [activeRootItem?.id, uniqueSlotAssets.length]);
+
+    // Gather all variants (root + children of the root)
+    const variants = activeRootItem 
+        ? [activeRootItem, ...childItems.filter(c => c.parentId === activeRootItem.id)]
+        : [];
+
+    const activeAsset = uniqueSlotAssets.find(a => a.id === activeVariantId) || initialHeroAsset;
+    const heroType = activeAsset?.tag === 'Studio Image' ? 'studio' : 'sketch';
+
+    const isFinalRender = activeAsset ? finalAssets.some(a => a.id === activeAsset.id && a.tag === 'Studio Image') : false;
+    const isFinalSketch = activeAsset ? finalAssets.some(a => a.id === activeAsset.id && a.tag === 'Sketch') : false;
+    
+    const heroLabel = heroType === 'studio' 
+        ? (isFinalRender ? 'Final Render' : 'Draft Render') 
+        : (isFinalSketch ? 'Final Sketch' : 'Initial Sketch');
+        
     const getAssetDisplaySrc = (asset: GalleryAsset): string => {
-        if ('src' in asset) {
-            return asset.src;
-        }
-        if (asset.tag === 'Mood Board' && asset.sources.length > 0) {
-             return getDisplaySrc(asset.sources[0]);
-        }
-        if (asset.tag === 'Multi-View' && asset.views.length > 0) {
-             return getDisplaySrc(asset.views[0].source);
-        }
+        if ('src' in asset) return asset.src;
+        if (asset.tag === 'Mood Board' && asset.sources.length > 0) return getDisplaySrc(asset.sources[0]);
+        if (asset.tag === 'Multi-View' && asset.views.length > 0) return getDisplaySrc(asset.views[0].source);
         return '';
-    }
+    };
+
+    return (
+        <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
+            <div className="mb-3 flex justify-between items-center min-h-[28px] flex-shrink-0 relative">
+                <span 
+                    onClick={() => onEnterItem(slot.id)}
+                    className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px]"
+                >
+                    {slot.name}
+                </span>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => onEnterItem(slot.id)}
+                        className="text-xs text-indigo-400 hover:text-white font-medium flex items-center transition-colors flex-shrink-0"
+                    >
+                        Open
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                    {activeAsset && onDuplicateItem && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicateItem(activeAsset);
+                            }}
+                            className="text-blue-400 hover:text-blue-300 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
+                            title="Duplicate Hero Asset"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                            </svg>
+                        </button>
+                    )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteItemSlot(slot.id);
+                        }}
+                        className="text-slate-500 hover:text-red-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
+                        title="Delete Item Slot"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* Hero Slot */}
+            <div 
+                onClick={() => activeAsset ? onSelectItem(slot.id, heroType) : onOpenTool('sketch', slot.id, activeAsset?.id)}
+                className={`aspect-square mb-2 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full ${activeAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
+            >
+                {activeAsset ? (
+                    <img src={getAssetDisplaySrc(activeAsset) || undefined} alt={slot.name} className="w-full h-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                        <span className="text-xs uppercase font-bold">Generate Sketch</span>
+                    </div>
+                )}
+                {activeAsset && (
+                    <div className={`absolute bottom-0 left-0 right-0 ${isFinalRender || isFinalSketch ? 'bg-indigo-600/90' : 'bg-black/60'} text-white text-[10px] font-bold uppercase py-1 text-center backdrop-blur-sm`}>
+                        {heroLabel}
+                    </div>
+                )}
+            </div>
+
+            {/* Variants Strip */}
+            {variants.length > 1 && (
+                <div className="flex gap-2 mb-3 overflow-x-auto custom-scrollbar pb-1">
+                    {variants.map(variant => (
+                        <button
+                            key={variant.id}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveVariantId(variant.id);
+                            }}
+                            className={`flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${activeVariantId === variant.id ? 'border-indigo-500 scale-105' : 'border-slate-700 hover:border-slate-500'}`}
+                            title={variant.id === activeRootItem?.id ? "Original" : "Variant"}
+                        >
+                            <img src={getAssetDisplaySrc(variant)} alt="Variant thumbnail" className="w-full h-full object-cover" />
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Action Slots */}
+            <div className="grid grid-cols-3 gap-2 mt-auto w-full flex-shrink-0">
+                {/* Sketch Link */}
+                <div 
+                    onClick={() => activeAsset?.tag === 'Sketch' ? onSelectItem(slot.id, 'sketch') : onOpenTool('sketch', slot.id, activeAsset?.id)}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${activeAsset?.tag === 'Sketch' ? 'border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
+                    title={activeAsset?.tag === 'Sketch' ? "View Sketch" : "Generate Sketch"}
+                >
+                    {activeAsset?.tag === 'Sketch' ? (
+                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Sketch" />
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                    )}
+                </div>
+
+                {/* Render Link */}
+                <div 
+                    onClick={() => activeAsset?.tag === 'Studio Image' ? onSelectItem(slot.id, 'studio') : (activeAsset ? onOpenTool('visualiser', slot.id, activeAsset?.id) : null)}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset?.tag === 'Studio Image' ? 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer' : (activeAsset ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                    title={activeAsset?.tag === 'Studio Image' ? "View Render" : "Visualise Product"}
+                >
+                     {activeAsset?.tag === 'Studio Image' ? (
+                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Render" />
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    )}
+                </div>
+
+                {/* Tech Pack Link */}
+                <div 
+                    onClick={() => techpack ? onSelectItem(slot.id, 'techpack') : (activeAsset ? onOpenTool('techpack', slot.id, activeAsset?.id) : null)}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (activeAsset ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                    title={techpack ? "View Tech Pack" : "Generate Tech Pack"}
+                >
+                     {techpack ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,126 +286,19 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar pb-20 items-stretch">
                 {(() => {
-                    const reversedFinalAssets = [...finalAssets].reverse();
-                    return slots.map((slot) => {
-                        // Check if there are any promoted (final) assets for this slot (get the most recent one)
-                        const finalStudio = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Studio Image');
-                        const finalSketch = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Sketch');
-                        const finalTechpack = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Tech Pack');
-
-                    const sketch = finalSketch || getAsset(slot.sketchId);
-                    const studio = finalStudio || getAsset(slot.studioImageId);
-                    const techpack = finalTechpack || getAsset(slot.techPackId);
-                    
-                    // Priority: Studio -> Sketch
-                    const heroAsset = studio || sketch;
-                    const heroType = studio ? 'studio' : 'sketch';
-
-                    // Determine if the hero asset is actually a final render or just a draft
-                    const isFinalRender = !!finalStudio;
-                    const isFinalSketch = !!finalSketch;
-                    const heroLabel = heroType === 'studio' 
-                        ? (isFinalRender ? 'Final Render' : 'Draft Render') 
-                        : (isFinalSketch ? 'Final Sketch' : 'Initial Sketch');
-
-                    return (
-                        <div key={slot.id} className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
-                            <div className="mb-3 flex justify-between items-center min-h-[28px] flex-shrink-0 relative">
-                                <span 
-                                    onClick={() => onEnterItem(slot.id)}
-                                    className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px]"
-                                >
-                                    {slot.name}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <button 
-                                        onClick={() => onEnterItem(slot.id)}
-                                        className="text-xs text-indigo-400 hover:text-white font-medium flex items-center transition-colors flex-shrink-0"
-                                    >
-                                        Open
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSlotToDelete(slot);
-                                        }}
-                                        className="text-slate-500 hover:text-red-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
-                                        title="Delete Item Slot"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Hero Slot */}
-                            <div 
-                                onClick={() => heroAsset ? onSelectItem(slot.id, heroType) : onOpenTool('sketch', slot.id)}
-                                className={`aspect-square mb-3 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full ${heroAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
-                            >
-                                {heroAsset ? (
-                                    <img src={getAssetDisplaySrc(heroAsset) || undefined} alt={slot.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
-                                        <span className="text-xs uppercase font-bold">Generate Sketch</span>
-                                    </div>
-                                )}
-                                {heroAsset && (
-                                    <div className={`absolute bottom-0 left-0 right-0 ${isFinalRender || isFinalSketch ? 'bg-indigo-600/90' : 'bg-black/60'} text-white text-[10px] font-bold uppercase py-1 text-center backdrop-blur-sm`}>
-                                        {heroLabel}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Action Slots */}
-                            <div className="grid grid-cols-3 gap-2 mt-auto w-full flex-shrink-0">
-                                {/* Sketch Link */}
-                                <div 
-                                    onClick={() => sketch ? onSelectItem(slot.id, 'sketch') : onOpenTool('sketch', slot.id)}
-                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${sketch ? 'border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
-                                    title={sketch ? "View Sketch" : "Generate Sketch"}
-                                >
-                                    {sketch ? (
-                                        <img src={getAssetDisplaySrc(sketch) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Sketch" />
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
-                                    )}
-                                </div>
-
-                                {/* Render Link */}
-                                <div 
-                                    onClick={() => studio ? onSelectItem(slot.id, 'studio') : (sketch ? onOpenTool('visualiser', slot.id) : null)}
-                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${studio ? 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer' : (sketch ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
-                                    title={studio ? "View Render" : "Visualise Product"}
-                                >
-                                     {studio ? (
-                                        <img src={getAssetDisplaySrc(studio) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Render" />
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    )}
-                                </div>
-
-                                {/* Tech Pack Link */}
-                                <div 
-                                    onClick={() => techpack ? onSelectItem(slot.id, 'techpack') : (studio ? onOpenTool('techpack', slot.id) : null)}
-                                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (studio ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
-                                    title={techpack ? "View Tech Pack" : "Generate Tech Pack"}
-                                >
-                                     {techpack ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                    });
+                    return slots.map((slot) => (
+                        <ItemSlotCard 
+                             key={slot.id}
+                             slot={slot}
+                             assets={assets}
+                             finalAssets={finalAssets}
+                             onEnterItem={onEnterItem}
+                             onDuplicateItem={onDuplicateItem}
+                             onDeleteItemSlot={setSlotToDelete}
+                             onSelectItem={onSelectItem}
+                             onOpenTool={onOpenTool}
+                        />
+                    ));
                 })()}
 
                 {/* Suggestions */}

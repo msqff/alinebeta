@@ -12,6 +12,7 @@ interface DualGalleryProps {
     onPromoteItem: (item: GalleryAsset) => void;
     onDemoteItem: (item: GalleryAsset) => void;
     onDeleteAsset: (item: GalleryAsset) => void;
+    onDuplicateItem?: (item: GalleryAsset) => void;
     onReview?: (item: GalleryItem) => void;
     onShopperPulse?: (item: GalleryItem) => void;
     selectedItem: GalleryItem | null;
@@ -64,6 +65,7 @@ export const DualGallery: React.FC<DualGalleryProps> = (props) => {
                         onPromoteItem={props.onPromoteItem}
                         onDemoteItem={props.onDemoteItem}
                         onDeleteAsset={props.onDeleteAsset}
+                        onDuplicateItem={props.onDuplicateItem}
                         onReview={props.onReview}
                         onShopperPulse={props.onShopperPulse}
                         selectedItem={props.selectedItem}

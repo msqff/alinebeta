@@ -722,6 +722,12 @@ const App: React.FC = () => {
 
     const handleDemoteItem = useCallback((itemToDemote: GalleryAsset) => {
         setFinalGalleryItems(prev => prev.filter(i => i.id !== itemToDemote.id));
+        setIdeationGalleryItems(prev => {
+            if (prev.some(i => i.id === itemToDemote.id)) {
+                return prev;
+            }
+            return [...prev, itemToDemote];
+        });
         if (selectedImageForTool?.id === itemToDemote.id) {
             setSelectedImageForTool(null);
             setActiveTool(null);

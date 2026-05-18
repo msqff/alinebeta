@@ -429,7 +429,8 @@ const App: React.FC = () => {
         setLoadingMessage('Tweaking your sketch...');
         setError(null);
         try {
-            const imageSources = await tweakSketch(baseImage, prompt, maskImage, imageCount);
+            const context = activeCollection ? { styleDna: activeCollection.styleDna, palette: activeCollection.extractedPalette } : undefined;
+            const imageSources = await tweakSketch(baseImage, prompt, maskImage, imageCount, context);
             addItemsToIdeationGallery(imageSources, 'Sketch', `Tweak: ${prompt}`, editingItem?.id);
             handleBackToMenu();
         } catch (e: any) {
@@ -444,7 +445,8 @@ const App: React.FC = () => {
         setLoadingMessage('Applying your edits...');
         setError(null);
         try {
-            const imageSources = await tweakStudioImage(baseImage, prompt, maskImage, imageCount);
+            const context = activeCollection ? { styleDna: activeCollection.styleDna, palette: activeCollection.extractedPalette } : undefined;
+            const imageSources = await tweakStudioImage(baseImage, prompt, maskImage, imageCount, context);
             addItemsToIdeationGallery(imageSources, 'Studio Image', `Tweak: ${prompt}`, editingItem?.id);
             handleBackToMenu();
         } catch (e: any) {

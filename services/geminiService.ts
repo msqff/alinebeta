@@ -331,7 +331,7 @@ export const generatePattern = async (prompt: string, imageCount: number = 4): P
     return Promise.all(imagePromises);
 };
 
-export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4): Promise<ImageSource[]> => {
+export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     let textPrompt: string;
@@ -343,6 +343,10 @@ export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskIm
         parts.push({ inlineData: { data: localMask.data, mimeType: localMask.mimeType } });
     } else {
         textPrompt = `Based on the provided fashion flat sketch, generate a new version with the following modification: "${prompt}". The output must strictly be a minimalist black and white fashion flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`;
+    }
+    
+    if (context) {
+        textPrompt += `\n\nDESIGN CONTEXT - The design must subtly adhere to the following Style DNA: ${context.styleDna}. Incorporate these aesthetic cues into the silhouette and details. Ensure any coloring strictly respects the brand color palette (Hex codes: ${context.palette.join(', ')}). If a general color is requested (like "red"), match it to the closest color in this palette.`;
     }
     
     parts.push({ text: textPrompt });
@@ -362,7 +366,7 @@ export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskIm
     return Promise.all(imagePromises);
 };
 
-export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4): Promise<ImageSource[]> => {
+export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     let textPrompt: string;
@@ -374,6 +378,10 @@ export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, m
         parts.push({ inlineData: { data: localMask.data, mimeType: localMask.mimeType } });
     } else {
         textPrompt = `Based on the provided photorealistic product image, generate a new version with the following modification: "${prompt}". Ensure the output is a hyper-realistic photograph of a real physical garment, avoiding any digital mock-up look. Focus on realistic fabric texture and lighting. Please provide a distinct visual variation.`;
+    }
+    
+    if (context) {
+        textPrompt += `\n\nDESIGN CONTEXT - The design must subtly adhere to the following Style DNA: ${context.styleDna}. Incorporate these aesthetic cues. Any requested colors MUST strictly align with the collection color palette (Hex codes: ${context.palette.join(', ')}). If the user asks for "another color from the palette" or gives a general color, you must use one of these precise hex codes.`;
     }
     
     parts.push({ text: textPrompt });

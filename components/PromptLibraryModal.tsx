@@ -61,22 +61,30 @@ DESIGN CONTEXT - The design must strictly adhere to the following Style DNA: {st
     {
         name: "Tweak Sketch (with mask)",
         description: "Modifies a specific part of a sketch.",
-        prompt: `Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "{prompt}". The output must remain a minimalist black and white flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`
+        prompt: `Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "{prompt}". The output must remain a minimalist black and white flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.
+
+DESIGN CONTEXT - The design must subtly adhere to the following Style DNA: {styleDna}. Incorporate these aesthetic cues into the silhouette and details. Ensure any coloring strictly respects the brand color palette (Hex codes: {palette}). If a general color is requested (like "red"), match it to the closest color in this palette.`
     },
     {
         name: "Tweak Sketch (without mask)",
         description: "Modifies the entire sketch.",
-        prompt: `Based on the provided fashion flat sketch, generate a new version with the following modification: "{prompt}". The output must strictly be a minimalist black and white fashion flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`
+        prompt: `Based on the provided fashion flat sketch, generate a new version with the following modification: "{prompt}". The output must strictly be a minimalist black and white fashion flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.
+
+DESIGN CONTEXT - The design must subtly adhere to the following Style DNA: {styleDna}. Incorporate these aesthetic cues into the silhouette and details. Ensure any coloring strictly respects the brand color palette (Hex codes: {palette}). If a general color is requested (like "red"), match it to the closest color in this palette.`
     },
     {
         name: "Tweak Studio Image (with mask)",
         description: "Modifies a specific part of a studio image.",
-        prompt: `Based on the provided product image and the mask, apply this change ONLY to the masked area: "{prompt}". The output must remain a photorealistic studio product shot. Maintain the style of the original: professional lighting, neutral background, and realistic textures.`
+        prompt: `Based on the provided product image and the mask, apply this change ONLY to the masked area: "{prompt}". The output must remain a photorealistic studio product shot. Maintain the style of the original: professional lighting, neutral background, and realistic textures.
+
+DESIGN CONTEXT - The design must subtly adhere to the following Style DNA: {styleDna}. Incorporate these aesthetic cues. Any requested colors MUST strictly align with the collection color palette (Hex codes: {palette}). If the user asks for "another color from the palette" or gives a general color, you must use one of these precise hex codes.`
     },
     {
         name: "Tweak Studio Image (without mask)",
         description: "Modifies the entire studio image.",
-        prompt: `Based on the provided photorealistic product image, generate a new version with the following modification: "{prompt}". Ensure the output is a hyper-realistic photograph of a real physical garment, avoiding any digital mock-up look. Focus on realistic fabric texture and lighting. Please provide a distinct visual variation.`
+        prompt: `Based on the provided photorealistic product image, generate a new version with the following modification: "{prompt}". Ensure the output is a hyper-realistic photograph of a real physical garment, avoiding any digital mock-up look. Focus on realistic fabric texture and lighting. Please provide a distinct visual variation.
+
+DESIGN CONTEXT - The design must subtly adhere to the following Style DNA: {styleDna}. Incorporate these aesthetic cues. Any requested colors MUST strictly align with the collection color palette (Hex codes: {palette}). If the user asks for "another color from the palette" or gives a general color, you must use one of these precise hex codes.`
     },
     {
         name: "Visualise Product",

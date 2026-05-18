@@ -1,7 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
 
 const compressImage = (dataUrl: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -46,18 +44,10 @@ export const uploadBase64 = async (base64: string, mimeType: string): Promise<st
         console.warn("Image compression failed, using original", e);
     }
 
-    const filename = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
-    const storageRef = ref(storage, filename);
-    try {
-        await uploadString(storageRef, compressedDataUrl, 'data_url');
-        const downloadURL = await getDownloadURL(storageRef);
-        return downloadURL;
-    } catch (error: any) {
-        console.error("Firebase Storage Error:", error);
-        console.warn("Falling back to base64 data URL due to Storage error.");
-        // Fallback to returning the compressed data URL directly so it gets saved in Firestore
-        return compressedDataUrl;
-    }
+    // Since Firebase Storage might not be provisioned or configured with public rules,
+    // we bypass it and use base64 data URLs directly (stored in Firestore).
+    // The compressed image should be small enough to fit within Firestore document limits.
+    return compressedDataUrl;
 };
 
 export const fileToBase64 = async (file: File): Promise<ImageSource> => {

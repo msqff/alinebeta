@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { CollectionSelector } from './components/CollectionSelector';
+import { CollectionSettingsModal } from './components/CollectionSettingsModal';
 import { ItemManager } from './components/ItemManager';
 import { ToolSelector } from './components/ToolSelector';
 import { SketchGenerator } from './components/SketchGenerator';
@@ -53,6 +54,7 @@ const App: React.FC = () => {
     const [traceabilityStartItem, setTraceabilityStartItem] = useState<GalleryAsset | null>(null);
     const [generatedPatterns, setGeneratedPatterns] = useState<GeneratedPattern[]>([]);
     const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
+    const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] = useState(false);
     const [isGalleryFullscreen, setIsGalleryFullscreen] = useState(false);
     const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
     
@@ -152,6 +154,13 @@ const App: React.FC = () => {
                 name: name
             }));
             setItemSlots(prev => [...prev, ...newSlots]);
+        }
+    };
+
+    const handleEditCollection = (updatedCollection: Collection) => {
+        setCollections(prev => prev.map(c => c.id === updatedCollection.id ? updatedCollection : c));
+        if (activeCollection?.id === updatedCollection.id) {
+            setActiveCollection(updatedCollection);
         }
     };
 
@@ -912,6 +921,7 @@ const App: React.FC = () => {
             {itemPendingShopperPulse && <ShopperPulseModal item={itemPendingShopperPulse} onClose={() => setItemPendingShopperPulse(null)} />}
             {traceabilityStartItem && <TraceabilityModal startItem={traceabilityStartItem} allItems={allGalleryItems} onClose={() => setTraceabilityStartItem(null)} onSelectItem={(item) => handleSelectGalleryItem(item, 'ideation')} />}
             {isPatternModalOpen && <PatternGalleryModal patterns={generatedPatterns} onClose={() => setIsPatternModalOpen(false)} />}
+            {isCollectionSettingsOpen && activeCollection && <CollectionSettingsModal collection={activeCollection} onClose={() => setIsCollectionSettingsOpen(false)} onSave={handleEditCollection} />}
             {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData)} />}
             {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}
@@ -921,6 +931,7 @@ const App: React.FC = () => {
                 hasGeneratedPatterns={generatedPatterns.length > 0}
                 activeCollection={activeCollection}
                 onExitCollection={handleExitCollection}
+                onEditCollection={() => setIsCollectionSettingsOpen(true)}
                 activeItemName={activeSlot?.name}
                 onExitItem={handleExitItemWorkspace}
                 onShowPromptLibrary={() => setIsPromptLibraryOpen(true)}

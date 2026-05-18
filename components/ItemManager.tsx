@@ -294,7 +294,7 @@ const ItemSlotCard: React.FC<{
                              finalAssets={finalAssets}
                              onEnterItem={onEnterItem}
                              onDuplicateItem={onDuplicateItem}
-                             onDeleteItemSlot={setSlotToDelete}
+                             onDeleteItemSlot={(id) => setSlotToDelete(slots.find(s => s.id === id) || null)}
                              onSelectItem={onSelectItem}
                              onOpenTool={onOpenTool}
                         />

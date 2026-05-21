@@ -331,8 +331,16 @@ const App: React.FC = () => {
         return undefined;
     };
 
-    const addItemsToIdeationGallery = (sources: ImageSource[], tag: GalleryItem['tag'], prompt: string, parentId?: string) => {
+    const addItemsToIdeationGallery = (sources: ImageSource[], tag: GalleryItem['tag'], prompt: string, parentId?: string, designAttributes?: Record<string, string>) => {
         const targetSlotId = getTargetSlotId(activeSlotId, parentId);
+        
+        let inheritedAttributes = designAttributes;
+        if (!inheritedAttributes && parentId) {
+            const parent = [...ideationGalleryItems, ...finalGalleryItems].find(i => i.id === parentId);
+            if (parent && parent.designAttributes) {
+                inheritedAttributes = parent.designAttributes;
+            }
+        }
         
         const newItems: GalleryItem[] = sources.map(source => {
             const id = self.crypto.randomUUID();
@@ -344,7 +352,8 @@ const App: React.FC = () => {
                 prompt, 
                 parentId,
                 collectionId: activeCollection?.id,
-                itemSlotId: targetSlotId
+                itemSlotId: targetSlotId,
+                designAttributes: inheritedAttributes
             };
         });
         setIdeationGalleryItems(prev => [...prev, ...newItems]);
@@ -392,7 +401,7 @@ const App: React.FC = () => {
     
     // ... existing handlers (handleGenerateSketches, handleAnalysisComplete, etc.) remain unchanged ...
     
-    const handleGenerateSketches = async (prompt: string, imageCount: number) => {
+    const handleGenerateSketches = async (prompt: string, imageCount: number, designAttributes?: Record<string, string>) => {
         setIsLoading(true);
         setLoadingMessage('Generating your fashion sketches...');
         setError(null);
@@ -400,7 +409,7 @@ const App: React.FC = () => {
             // Inject Context
             const context = activeCollection ? { styleDna: activeCollection.styleDna } : undefined;
             const imageSources = await generateSketches(prompt, context, imageCount);
-            addItemsToIdeationGallery(imageSources, 'Sketch', prompt);
+            addItemsToIdeationGallery(imageSources, 'Sketch', prompt, undefined, designAttributes);
             if (activeSlotId) handleBackToMenu(); // Go back to Item Workspace
         } catch (e: any) {
             setError(e.message || "An unexpected error occurred.");
@@ -462,16 +471,18 @@ const App: React.FC = () => {
         setError(null);
         try {
             let parentId = selectedImageForTool?.id;
+            let designAttributes = selectedImageForTool?.designAttributes;
     
             const isNewUpload = !selectedImageForTool || selectedImageForTool.source.data !== baseImage.data;
     
             if (isNewUpload) {
                 const [newItem] = addItemsToIdeationGallery([baseImage], 'Sketch', 'Uploaded Sketch');
                 parentId = newItem.id;
+                designAttributes = undefined;
             }
     
             const context = activeCollection ? { styleDna: activeCollection.styleDna, palette: activeCollection.extractedPalette } : undefined;
-            const newImageSources = await visualiseProduct(baseImage, prompt, patternImage, context, imageCount);
+            const newImageSources = await visualiseProduct(baseImage, prompt, patternImage, context, imageCount, designAttributes);
             const newItems = addItemsToIdeationGallery(newImageSources, 'Studio Image', prompt, parentId);
             
             handleBackToMenu();
@@ -593,7 +604,7 @@ const App: React.FC = () => {
         setLoadingMessage("Generating Smart Tech Pack...");
         setError(null);
         try {
-            const { sections, sizingData, costingData, placementData, bomData } = await generateTechPack(item.source, additionalImages);
+            const { sections, sizingData, costingData, placementData, bomData } = await generateTechPack(item.source, additionalImages, item.designAttributes);
             const targetSlotId = getTargetSlotId(activeSlotId, item.id);
 
             const newTechPack: TechPackAsset = {

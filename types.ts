@@ -64,6 +64,7 @@ export interface GalleryItem {
   tag: 'Sketch' | 'Studio Image' | 'Model Shot';
   prompt: string;
   parentId?: string;
+  designAttributes?: Record<string, string>;
   // New Collection Links
   collectionId?: string;
   itemSlotId?: string;
@@ -93,6 +94,8 @@ export interface TechPackItem {
     label: string;
     value: string;
     options: string[]; // AI suggested alternatives
+    originalValue?: string;
+    hasDrift?: boolean;
 }
 
 export interface TechPackSection {

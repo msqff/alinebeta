@@ -68,6 +68,71 @@ export const fileToBase64 = async (file: File): Promise<ImageSource> => {
   });
 };
 
+const extractJSON = (text: string): string => {
+    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    let openBraces = 0;
+    let inString = false;
+    let escapeNext = false;
+    
+    // Find the first { or [
+    const firstBrace = cleanText.indexOf('{');
+    const firstBracket = cleanText.indexOf('[');
+    
+    let startIdx = -1;
+    let openingChar = '';
+    let closingChar = '';
+    
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+        startIdx = firstBrace;
+        openingChar = '{';
+        closingChar = '}';
+    } else if (firstBracket !== -1) {
+        startIdx = firstBracket;
+        openingChar = '[';
+        closingChar = ']';
+    }
+    
+    let endIdx = -1;
+    
+    if (startIdx !== -1) {
+        for (let i = startIdx; i < cleanText.length; i++) {
+            const char = cleanText[i];
+            
+            if (escapeNext) {
+                escapeNext = false;
+                continue;
+            }
+            
+            if (char === '\\') {
+                escapeNext = true;
+                continue;
+            }
+            
+            if (char === '"') {
+                inString = !inString;
+                continue;
+            }
+            
+            if (!inString) {
+                if (char === openingChar) openBraces++;
+                else if (char === closingChar) openBraces--;
+                
+                if (openBraces === 0) {
+                    endIdx = i;
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (startIdx !== -1 && endIdx !== -1) {
+        return cleanText.substring(startIdx, endIdx + 1);
+    }
+    
+    return cleanText; // fallback
+};
+
 const getAI = () => {
     return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy-key" });
 };
@@ -169,10 +234,7 @@ export const generateCollectionIntakeFromText = async (brief: string, audience: 
     const text = response.text;
     if (!text) throw new Error("API did not return content.");
     
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse JSON from model response.");
-    
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(extractJSON(text));
 };
 
 export const generateMoodBoardImage = async (styleDna: string, palette: string[], audience: string): Promise<ImageSource> => {
@@ -401,11 +463,16 @@ export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, m
     return Promise.all(imagePromises);
 };
 
-export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }, imageCount: number = 4): Promise<ImageSource[]> => {
+export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }, imageCount: number = 4, designAttributes?: Record<string, string>): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
     
     let textPrompt = `Transform the provided sketch into a hyper-realistic, true-to-life photograph of a real physical garment. The result must be indistinguishable from a high-end studio photo of a manufactured product. Strictly avoid any illustrative, painterly, or digital-art styles. Focus on tangible fabric textures (weave, sheen, weight), realistic draping, and precise construction details (seams, hems). Display on a neutral background. Specific design details: "${prompt}".`;
+
+    if (designAttributes && Object.keys(designAttributes).length > 0) {
+        const attrs = Object.entries(designAttributes).map(([k, v]) => `${k}: ${v}`).join(', ');
+        textPrompt += `\n\nOriginal design intent: ${attrs}.`;
+    }
 
     if (context) {
         textPrompt += `\n\nDESIGN CONTEXT - The materials, textures, and general finish MUST align with this Style DNA: ${context.styleDna}.`;
@@ -506,11 +573,17 @@ export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate
     return Promise.all(promises);
 };
 
-export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = []): Promise<{ sections: TechPackSection[], bomData: BOMRow[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[] }> => {
+export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = [], originalDesignAttributes?: Record<string, string>): Promise<{ sections: TechPackSection[], bomData: BOMRow[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[] }> => {
     const ai = getAI();
     const localImage = await getImageData(image);
     
-    const prompt = `Analyze the provided garment image${additionalImages && additionalImages.length > 0 ? 's (including front and additional views)' : ''} and generate a structured Technical Pack JSON object.
+    let prompt = `Analyze the provided garment image${additionalImages && additionalImages.length > 0 ? 's (including front and additional views)' : ''} and generate a structured Technical Pack JSON object.`;
+
+    if (originalDesignAttributes && Object.keys(originalDesignAttributes).length > 0) {
+        prompt += `\n\nQA VALIDATION TASK: You have also been provided with the 'original design attributes'. Compare your visual analysis against these original attributes. If the final image clearly deviates from an original attribute (e.g. original was 'Short Sleeve' but image is 'Long Sleeve'), you must flag it using 'hasDrift: true' and provide the original value.\nOriginal attributes: ${JSON.stringify(originalDesignAttributes)}`;
+    }
+    
+    prompt += `
     
     The JSON must strictly follow this structure:
     {
@@ -521,7 +594,9 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
                     {
                         "label": "Item Label (e.g., Neckline, Main Fabric)",
                         "value": "Item Value (e.g., V-neck, 100% Cotton)",
-                        "options": ["Alternative 1", "Alternative 2"]
+                        "options": ["Alternative 1", "Alternative 2"],
+                        "originalValue": "If there is drift, put the original attribute value here",
+                        "hasDrift": true
                     }
                 ]
             }
@@ -629,13 +704,13 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
     if (!text) {
         throw new Error("API did not return tech pack content.");
     }
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-        throw new Error("Failed to parse JSON from model response.");
+    
+    let parsed: any;
+    try {
+        parsed = JSON.parse(extractJSON(text));
+    } catch (e: any) {
+        throw new Error(`Failed to parse Tech Pack data: ${e.message}`);
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
     
     // Assign IDs to all generated items
     if (parsed.sections) {
@@ -721,10 +796,7 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     const text = response.text;
     if (!text) throw new Error("No review generated");
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse JSON");
-
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(extractJSON(text));
 };
 
 export const generateShopperPulse = async (image: ImageSource, price: number, persona: ShopperPersona): Promise<ShopperPulseResult> => {
@@ -769,10 +841,7 @@ export const generateShopperPulse = async (image: ImageSource, price: number, pe
     const text = response.text;
     if (!text) throw new Error("No shopper pulse generated");
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse JSON");
-
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(extractJSON(text));
 }
 
 export const analyzeReferenceImage = async (image: ImageSource): Promise<{ description: string, attributes: Record<string, { value: string, alternatives: string[] }> }> => {
@@ -813,9 +882,7 @@ export const analyzeReferenceImage = async (image: ImageSource): Promise<{ descr
     if (!text) throw new Error("Failed to extract attributes from reference image.");
     
     try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Failed to parse JSON");
-        return JSON.parse(jsonMatch[0]);
+        return JSON.parse(extractJSON(text));
     } catch (e) {
         throw new Error("Failed to parse attributes from reference image.");
     }

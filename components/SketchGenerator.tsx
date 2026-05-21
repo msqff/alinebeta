@@ -6,7 +6,7 @@ import { fileToBase64, analyzeReferenceImage } from '../services/geminiService';
 import { Spinner } from './common/Spinner';
 
 interface SketchGeneratorProps {
-    onGenerate: (prompt: string, imageCount: number) => void;
+    onGenerate: (prompt: string, imageCount: number, designAttributes?: Record<string, string>) => void;
     onBack: () => void;
 }
 
@@ -76,6 +76,7 @@ export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, on
         if (e) e.preventDefault();
         
         let finalPrompt = '';
+        let designAttributes: Record<string, string> | undefined;
         
         if (mode === 'text') {
             finalPrompt = prompt.trim();
@@ -91,10 +92,17 @@ export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, on
             if (additionalInstructions.trim()) {
                 finalPrompt += ` Additional details: ${additionalInstructions.trim()}`;
             }
+
+            designAttributes = {};
+            attributes.forEach(a => {
+                if (a.label.trim() && a.value.trim()) {
+                    designAttributes![a.label] = a.value;
+                }
+            });
         }
         
         if (finalPrompt) {
-            onGenerate(finalPrompt, imageCount);
+            onGenerate(finalPrompt, imageCount, designAttributes);
         }
     };
 

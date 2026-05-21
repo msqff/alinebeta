@@ -107,7 +107,7 @@ const MultiViewNode: React.FC<{item: MultiViewAsset, onClick?: () => void}> = ({
 
 export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem, allItems, onClose, onSelectItem }) => {
     const [lineage, setLineage] = useState<GalleryAsset[]>([]);
-    const [lightboxItem, setLightboxItem] = useState<{current: GalleryAsset, parent: GalleryAsset | null} | null>(null);
+    const [lightboxItem, setLightboxItem] = useState<{current: GalleryAsset, parent: GalleryAsset | null, original: GalleryAsset | null} | null>(null);
 
     useEffect(() => {
         const path: GalleryAsset[] = [];
@@ -134,7 +134,8 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
     const handleNodeClick = (item: GalleryAsset, index: number) => {
         if (['Sketch', 'Studio Image', 'Model Shot'].includes(item.tag)) {
             const parent = index > 0 ? lineage[index - 1] : null;
-            setLightboxItem({ current: item, parent });
+            const original = lineage.length > 0 ? lineage[0] : null;
+            setLightboxItem({ current: item, parent, original });
         } else {
             // For other types like Tech Pack or Multi-View, we might just select them
             onSelectItem(item);
@@ -191,6 +192,7 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
                 <ImageLightbox 
                     currentAsset={lightboxItem.current} 
                     parentAsset={lightboxItem.parent} 
+                    originalAsset={lightboxItem.original}
                     onClose={() => setLightboxItem(null)} 
                 />
             )}

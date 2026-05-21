@@ -774,3 +774,49 @@ export const generateShopperPulse = async (image: ImageSource, price: number, pe
 
     return JSON.parse(jsonMatch[0]);
 }
+
+export const analyzeReferenceImage = async (image: ImageSource): Promise<{ description: string, attributes: Record<string, { value: string, alternatives: string[] }> }> => {
+    const ai = getAI();
+    const localImage = await getImageData(image);
+    
+    const prompt = `Analyze this garment reference image.
+    
+    1. Provide a "description": A really generic description of the product (e.g., "A long sleeve knit sweater", "A pair of denim jeans").
+    2. Extract structural "attributes": For each key attribute of the garment, provide a primary "value" and an array of 3-4 "alternatives" that could also make sense for this style.
+    Consider attributes like: Silhouette, Neckline, Sleeve Type, Closure, Intended Material, Fit, Details, etc.
+    Do NOT include the word "Attribute" in the keys.
+
+    Return strictly a JSON object formatted as follows:
+    {
+        "description": "A generic description of the product",
+        "attributes": {
+            "Silhouette": { "value": "Oversized", "alternatives": ["Fitted", "Boxy", "A-Line"] },
+            "Neckline": { "value": "Crewneck", "alternatives": ["V-Neck", "Turtleneck", "Scoop"] }
+        }
+    }`;
+
+    const parts = [
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
+        { text: prompt },
+    ];
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: { role: 'user', parts },
+        config: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+        }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("Failed to extract attributes from reference image.");
+    
+    try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Failed to parse JSON");
+        return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+        throw new Error("Failed to parse attributes from reference image.");
+    }
+};

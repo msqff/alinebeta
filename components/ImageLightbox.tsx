@@ -4,11 +4,12 @@ import { getDisplaySrc, GalleryAsset } from '../types';
 interface ImageLightboxProps {
     currentAsset: GalleryAsset;
     parentAsset: GalleryAsset | null;
+    originalAsset?: GalleryAsset | null;
     onClose: () => void;
 }
 
-export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, parentAsset, onClose }) => {
-    const [isComparisonMode, setIsComparisonMode] = useState(false);
+export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, parentAsset, originalAsset, onClose }) => {
+    const [comparisonTarget, setComparisonTarget] = useState<'none' | 'parent' | 'original'>('none');
     const [sliderPos, setSliderPos] = useState(50);
     const [isDragging, setIsDragging] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0, px: 0, py: 0 });
@@ -29,8 +30,18 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, pare
                     ('views' in parentAsset ? getDisplaySrc(parentAsset.views[0].source) : ''));
     }
 
+    let originalSrc = '';
+    if (originalAsset && originalAsset.id !== parentAsset?.id) {
+        originalSrc = 'src' in originalAsset ? originalAsset.src : 
+                      ('sources' in originalAsset ? getDisplaySrc(originalAsset.sources[0]) : 
+                      ('views' in originalAsset ? getDisplaySrc(originalAsset.views[0].source) : ''));
+    }
+
     const ZOOM_LEVEL = 2.5;
     const MAGNIFIER_SIZE = 180;
+
+    const isComparisonMode = comparisonTarget !== 'none';
+    const compareSrc = comparisonTarget === 'parent' ? parentSrc : (comparisonTarget === 'original' ? originalSrc : '');
 
     const handleMouseMove = (e: ReactMouseEvent) => {
         if (isComparisonMode) {
@@ -96,15 +107,26 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, pare
             onClick={onClose}
         >
             <div className="absolute top-6 right-6 flex items-center space-x-4 z-50" onClick={e => e.stopPropagation()}>
+                {originalSrc && (
+                    <button 
+                        onClick={() => {
+                            setComparisonTarget(comparisonTarget === 'original' ? 'none' : 'original');
+                            setShowMagnifier(false);
+                        }}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-lg ${comparisonTarget === 'original' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                    >
+                        {comparisonTarget === 'original' ? 'Exit Comparison' : 'Compare to Original'}
+                    </button>
+                )}
                 {parentSrc && (
                     <button 
                         onClick={() => {
-                            setIsComparisonMode(!isComparisonMode);
+                            setComparisonTarget(comparisonTarget === 'parent' ? 'none' : 'parent');
                             setShowMagnifier(false);
                         }}
-                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-lg ${isComparisonMode ? 'bg-indigo-600 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-lg ${comparisonTarget === 'parent' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
                     >
-                        {isComparisonMode ? 'Exit Comparison' : 'Compare to Parent'}
+                        {comparisonTarget === 'parent' ? 'Exit Comparison' : 'Compare to Parent'}
                     </button>
                 )}
                 
@@ -125,12 +147,12 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, pare
                 onMouseMove={handleMouseMove}
                 onMouseLeave={() => setShowMagnifier(false)}
             >
-                {isComparisonMode && parentSrc ? (
+                {isComparisonMode && compareSrc ? (
                     <div className="relative w-full h-full cursor-ew-resize" onMouseDown={() => setIsDragging(true)}>
-                        {/* Parent Image (Background) */}
+                        {/* Compare Image (Background) */}
                         <img 
-                            src={parentSrc || undefined} 
-                            alt="Parent" 
+                            src={compareSrc || undefined} 
+                            alt="Comparison Target" 
                             className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none" 
                         />
                         
@@ -191,7 +213,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({ currentAsset, pare
             <div className="mt-6 text-center text-slate-300">
                 <p className="font-medium">
                     {isComparisonMode 
-                        ? `Comparing: ${parentAsset?.tag || 'Before'} vs ${currentAsset.tag || 'After'}` 
+                        ? `Comparing: ${comparisonTarget === 'parent' ? (parentAsset?.tag || 'Parent') : (originalAsset?.tag || 'Original')} vs ${currentAsset.tag || 'After'}` 
                         : currentAsset.tag}
                 </p>
                 {!isComparisonMode && (

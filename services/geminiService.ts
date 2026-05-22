@@ -887,3 +887,43 @@ export const analyzeReferenceImage = async (image: ImageSource): Promise<{ descr
         throw new Error("Failed to parse attributes from reference image.");
     }
 };
+
+export const generateDPPBaseline = async (image: ImageSource, designAttributes?: Record<string, string>): Promise<any[]> => {
+    const ai = getAI();
+    const localImage = await getImageData(image);
+    
+    let prompt = `Analyze the provided garment image and generate a baseline Digital Product Passport (DPP).
+    Generate fields for: Primary Material Composition, Care Instructions, Recyclability/End-of-Life, Repairability Notes, and Microplastic Shedding Risk.`;
+
+    if (designAttributes && Object.keys(designAttributes).length > 0) {
+        prompt += `\n\nYou have also been provided with the original design attributes to inform your analysis: ${JSON.stringify(designAttributes)}`;
+    }
+
+    prompt += `\n\nReturn strictly a JSON array of objects, where each object has "label" (the attribute name), "value" (your assessment), and "options" (an array of 3-4 strings with alternative sustainable options or related considerations). Ensure there is no markdown codeblock formatting outside the brackets.
+    Format Example:
+    [
+        { "label": "Primary Material Composition", "value": "100% Cotton", "options": ["Organic Cotton", "Recycled Cotton", "Hemp Blend"] }
+    ]`;
+
+    const parts = [
+        { inlineData: { data: localImage.data, mimeType: localImage.mimeType } },
+        { text: prompt }
+    ];
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: { parts },
+        config: { responseMimeType: 'application/json' }
+    });
+    
+    const text = response.text;
+    if (!text) {
+        throw new Error("API did not return DPP content.");
+    }
+    
+    try {
+        return JSON.parse(extractJSON(text));
+    } catch (e: any) {
+        throw new Error(`Failed to parse DPP data: ${e.message}`);
+    }
+};

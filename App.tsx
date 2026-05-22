@@ -796,8 +796,8 @@ const App: React.FC = () => {
         setIdeationGalleryItems(prev => [...prev, duplicatedItem]);
     }, []);
 
-    const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => {
-        const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData } : item);
+    const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[], newDppData?: TechPackItem[]) => {
+        const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData, dpp: newDppData } : item);
         setFinalGalleryItems(updater);
         setViewingTechPack(null);
     };
@@ -935,7 +935,7 @@ const App: React.FC = () => {
             {traceabilityStartItem && <TraceabilityModal startItem={traceabilityStartItem} allItems={allGalleryItems} onClose={() => setTraceabilityStartItem(null)} onSelectItem={(item) => handleSelectGalleryItem(item, 'ideation')} />}
             {isPatternModalOpen && <PatternGalleryModal patterns={generatedPatterns} onClose={() => setIsPatternModalOpen(false)} />}
             {isCollectionSettingsOpen && activeCollection && <CollectionSettingsModal collection={activeCollection} onClose={() => setIsCollectionSettingsOpen(false)} onSave={handleEditCollection} />}
-            {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData)} />}
+            {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData)} />}
             {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}
             

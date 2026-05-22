@@ -153,6 +153,7 @@ export interface TechPackAsset {
     sizingData?: SizingRow[]; // Sizing matrix data
     costingData?: CostingRow[]; // Costing engine data
     placementData?: PlacementPin[]; // Placement guide data
+    dpp?: TechPackItem[]; // Digital Product Passport data
     parentId: string;
     collectionId?: string;
     itemSlotId?: string;

@@ -1,133 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getDisplaySrc,  TechPackAsset, TechPackSection, TechPackItem, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
 import { PdfExportModal } from './PdfExportModal';
+import { InteractiveAttributeRow } from './InteractiveAttributeRow';
+
+import { generateDPPBaseline } from '../services/geminiService';
+import { Spinner } from './common/Spinner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface TechPackModalProps {
     techPack: TechPackAsset;
     onClose: () => void;
-    onSaveChanges: (newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[]) => void;
+    onSaveChanges: (newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[], newDppData?: TechPackItem[]) => void;
 }
-
-const TechPackRow: React.FC<{
-    item: TechPackItem;
-    onUpdate: (newItem: TechPackItem) => void;
-    onDelete: () => void;
-}> = ({ item, onUpdate, onDelete }) => {
-    const [showOptions, setShowOptions] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    // Local state for inputs to prevent history spam on every keystroke
-    const [localLabel, setLocalLabel] = useState(item.label);
-    const [localValue, setLocalValue] = useState(item.value);
-
-    // Sync local state when parent state changes (e.g. Undo/Redo)
-    useEffect(() => {
-        setLocalLabel(item.label);
-    }, [item.label]);
-
-    useEffect(() => {
-        setLocalValue(item.value);
-    }, [item.value]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowOptions(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleSelectOption = (option: string) => {
-        // Swap current value with selected option
-        const oldValue = item.value;
-        const newOptions = item.options.filter(o => o !== option);
-        newOptions.push(oldValue);
-        
-        // Immediate update for dropdown selection
-        onUpdate({
-            ...item,
-            value: option,
-            options: newOptions
-        });
-        setShowOptions(false);
-    };
-
-    const handleLabelBlur = () => {
-        if (localLabel !== item.label) {
-            onUpdate({ ...item, label: localLabel });
-        }
-    };
-
-    const handleValueBlur = () => {
-        if (localValue !== item.value) {
-            onUpdate({ ...item, value: localValue });
-        }
-    };
-
-    return (
-        <div className="flex items-start space-x-4 mb-3 group relative">
-            <div className="flex-1">
-                <input
-                    type="text"
-                    value={localLabel}
-                    onChange={(e) => setLocalLabel(e.target.value)}
-                    onBlur={handleLabelBlur}
-                    className="w-full bg-transparent border-b border-slate-700/50 focus:border-indigo-500 text-slate-400 text-sm py-1.5 outline-none transition-colors"
-                    placeholder="Label"
-                />
-            </div>
-            <div className="flex-[2] relative" ref={dropdownRef}>
-                <div className="relative">
-                     <input
-                        type="text"
-                        value={localValue}
-                        onChange={(e) => setLocalValue(e.target.value)}
-                        onBlur={handleValueBlur}
-                        onFocus={() => item.options.length > 0 && setShowOptions(true)}
-                        className={`w-full bg-slate-900/50 border border-slate-700 rounded-lg text-slate-200 text-sm py-1.5 px-3 outline-none focus:ring-1 focus:ring-indigo-500 transition-all ${item.options.length > 0 ? 'pr-8' : ''}`}
-                        placeholder="Value"
-                    />
-                    {item.options.length > 0 && (
-                        <div 
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-indigo-400"
-                            onClick={() => setShowOptions(!showOptions)}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showOptions ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                    )}
-                </div>
-
-                {showOptions && item.options.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden animate-fade-in">
-                        <div className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-900/50 border-b border-slate-700">AI Suggestions</div>
-                        {item.options.map((option, idx) => (
-                            <div 
-                                key={idx}
-                                onClick={() => handleSelectOption(option)}
-                                className="px-3 py-2 text-sm text-slate-300 hover:bg-indigo-600 hover:text-white cursor-pointer transition-colors"
-                            >
-                                {option}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-            <button 
-                onClick={onDelete}
-                className="mt-1.5 p-1 text-slate-600 hover:text-red-400 hover:bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-all"
-                title="Remove Item"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
-        </div>
-    );
-};
 
 const TechPackSectionRenderer: React.FC<{
     section: TechPackSection;
@@ -190,7 +74,7 @@ const TechPackSectionRenderer: React.FC<{
             
             <div className="space-y-1">
                 {section.items.map(item => (
-                    <TechPackRow 
+                    <InteractiveAttributeRow 
                         key={item.id} 
                         item={item} 
                         onUpdate={handleUpdateItem} 
@@ -219,6 +103,8 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
     const [costingData, setCostingData] = useState<CostingRow[]>(techPack.costingData || []);
     const [placementData, setPlacementData] = useState<PlacementPin[]>(techPack.placementData || []);
     const [bomData, setBomData] = useState<BOMRow[]>(techPack.bomData || []);
+    const [dppData, setDppData] = useState<TechPackItem[]>(techPack.dpp || []);
+    const [isGeneratingDpp, setIsGeneratingDpp] = useState(false);
     
     // Migrate old BOM sections to dedicated BOM tab
     useEffect(() => {
@@ -246,15 +132,15 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
     }, []);
 
     // History Management
-    const [history, setHistory] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[]}[]>([]);
-    const [future, setFuture] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[]}[]>([]);
+    const [history, setHistory] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[], dppData: TechPackItem[]}[]>([]);
+    const [future, setFuture] = useState<{sections: TechPackSection[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[], bomData: BOMRow[], dppData: TechPackItem[]}[]>([]);
     
     // Dragging State
     const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const justFinishedDragRef = useRef(false);
     
-    type TabType = 'details' | 'bom' | 'sizing' | 'costing' | 'placement';
+    type TabType = 'details' | 'bom' | 'sizing' | 'costing' | 'placement' | 'dpp';
     const [activeTab, setActiveTab] = useState<TabType>('details');
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
@@ -265,17 +151,19 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         { id: 'sizing', label: 'Sizing' },
         { id: 'costing', label: 'Costing' },
         { id: 'placement', label: 'Placement' },
+        { id: 'dpp', label: 'DPP' }
     ];
 
     // Central update handler that pushes to history
-    const updateData = (newSections: TechPackSection[], newSizingData: SizingRow[] = sizingData, newCostingData: CostingRow[] = costingData, newPlacementData: PlacementPin[] = placementData, newBomData: BOMRow[] = bomData) => {
-        setHistory([...history, { sections, sizingData, costingData, placementData, bomData }]);
+    const updateData = (newSections: TechPackSection[], newSizingData: SizingRow[] = sizingData, newCostingData: CostingRow[] = costingData, newPlacementData: PlacementPin[] = placementData, newBomData: BOMRow[] = bomData, newDppData: TechPackItem[] = dppData) => {
+        setHistory([...history, { sections, sizingData, costingData, placementData, bomData, dppData }]);
         setFuture([]); // Clear future on new action
         setSections(newSections);
         setSizingData(newSizingData);
         setCostingData(newCostingData);
         setPlacementData(newPlacementData);
         setBomData(newBomData);
+        setDppData(newDppData);
     };
 
     const handleUndo = () => {
@@ -284,12 +172,13 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         const previous = history[history.length - 1];
         const newHistory = history.slice(0, history.length - 1);
         
-        setFuture([{ sections, sizingData, costingData, placementData, bomData }, ...future]);
+        setFuture([{ sections, sizingData, costingData, placementData, bomData, dppData }, ...future]);
         setSections(previous.sections);
         setSizingData(previous.sizingData);
         setCostingData(previous.costingData);
         setPlacementData(previous.placementData);
         setBomData(previous.bomData);
+        setDppData(previous.dppData);
         setHistory(newHistory);
     };
 
@@ -299,12 +188,13 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
         const next = future[0];
         const newFuture = future.slice(1);
 
-        setHistory([...history, { sections, sizingData, costingData, placementData, bomData }]);
+        setHistory([...history, { sections, sizingData, costingData, placementData, bomData, dppData }]);
         setSections(next.sections);
         setSizingData(next.sizingData);
         setCostingData(next.costingData);
         setPlacementData(next.placementData);
         setBomData(next.bomData);
+        setDppData(next.dppData);
         setFuture(newFuture);
     };
 
@@ -331,8 +221,55 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
     };
 
     const handleSave = () => {
-        onSaveChanges(sections, sizingData, costingData, placementData, bomData);
+        onSaveChanges(sections, sizingData, costingData, placementData, bomData, dppData);
         onClose();
+    };
+
+    const handleGenerateDpp = async () => {
+        setIsGeneratingDpp(true);
+        try {
+            const results = await generateDPPBaseline(techPack.source, techPack.designAttributes);
+            const newDpp = results.map((r: any) => ({
+                id: self.crypto.randomUUID(),
+                label: r.label,
+                value: r.value,
+                options: r.options || []
+            }));
+            updateData(sections, sizingData, costingData, placementData, bomData, newDpp);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsGeneratingDpp(false);
+        }
+    };
+
+    const handleUpdateDppItem = (updatedItem: TechPackItem) => {
+        const newItems = dppData.map(i => i.id === updatedItem.id ? updatedItem : i);
+        updateData(sections, sizingData, costingData, placementData, bomData, newItems);
+    };
+
+    const handleDeleteDppItem = (itemId: string) => {
+        const newItems = dppData.filter(i => i.id !== itemId);
+        updateData(sections, sizingData, costingData, placementData, bomData, newItems);
+    };
+
+    const handleAddDppItem = () => {
+        const newItem: TechPackItem = {
+            id: self.crypto.randomUUID(),
+            label: '',
+            value: '',
+            options: []
+        };
+        updateData(sections, sizingData, costingData, placementData, bomData, [...dppData, newItem]);
+    };
+
+    const generateDppLink = () => {
+        const payload = {
+            assetId: techPack.id,
+            dpp: dppData
+        };
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        return `${window.location.origin}${window.location.pathname}?dpp=${encoded}`;
     };
 
     const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -873,6 +810,71 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                                             ))
                                         )}
                                     </div>
+                                </div>
+                            ) : activeTab === 'dpp' ? (
+                                <div className="bg-slate-900/30 rounded-xl p-5 border border-white/5 h-full flex flex-col">
+                                    <h3 className="text-lg font-bold text-indigo-300 mb-4">Digital Product Passport</h3>
+                                    
+                                    {dppData.length === 0 ? (
+                                        <div className="flex-grow flex flex-col items-center justify-center text-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p className="text-slate-400 text-lg mb-2">No DPP Baseline Generated</p>
+                                            <p className="text-slate-500 text-sm mb-6 max-w-md">Create a baseline sustainability and compliance profile for this garment using AI analysis.</p>
+                                            <button 
+                                                onClick={handleGenerateDpp}
+                                                disabled={isGeneratingDpp}
+                                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold flex items-center transition-colors shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {isGeneratingDpp ? <><Spinner size="sm" color="white" /> <span className="ml-2">Analyzing...</span></> : 'Generate DPP Baseline'}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex-grow flex flex-col md:flex-row gap-6">
+                                            <div className="flex-grow flex flex-col min-w-0">
+                                                <div className="space-y-1 mb-4 flex-grow overflow-y-auto custom-scrollbar pr-2">
+                                                    {dppData.map((item) => (
+                                                        <InteractiveAttributeRow 
+                                                            key={item.id} 
+                                                            item={item} 
+                                                            onUpdate={handleUpdateDppItem} 
+                                                            onDelete={() => handleDeleteDppItem(item.id)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={handleAddDppItem}
+                                                    className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-400 flex items-center transition-colors uppercase tracking-wide w-fit"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Add Custom DPP Attribute
+                                                </button>
+                                            </div>
+
+                                            <div className="w-full md:w-56 shrink-0 flex flex-col items-center bg-slate-900 border border-slate-700/50 rounded-xl p-4 self-start shadow-xl">
+                                                <h4 className="text-sm font-bold text-slate-300 mb-4 text-center">Share Passport</h4>
+                                                <div className="bg-white p-3 rounded-lg w-full aspect-square flex items-center justify-center shadow-lg">
+                                                    <QRCodeSVG value={generateDppLink()} size={144} className="w-full h-auto max-w-[144px]" />
+                                                </div>
+                                                <div className="mt-4 w-full text-center">
+                                                    <a 
+                                                        href={generateDppLink()} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors inline-block break-all bg-indigo-900/30 px-3 py-2 rounded-lg border border-indigo-500/20"
+                                                    >
+                                                        Open Standalone Link
+                                                    </a>
+                                                    <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
+                                                        Scan or click to view public DPP registry details.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center h-full min-h-[300px]">

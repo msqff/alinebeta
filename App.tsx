@@ -28,7 +28,7 @@ import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData, deleteCollectionFromDb, deleteItemSlotFromDb, deleteAssetFromDb } from './services/fileService';
-import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, getDisplaySrc } from './types';
+import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, TechPackItem, getDisplaySrc } from './types';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User, signOut } from 'firebase/auth';
 
@@ -46,6 +46,7 @@ const App: React.FC = () => {
     const [activeSlotId, setActiveSlotId] = useState<string | null>(null); // Track which slot triggered a tool
     const [ideationGalleryItems, setIdeationGalleryItems] = useState<GalleryAsset[]>([]);
     const [finalGalleryItems, setFinalGalleryItems] = useState<GalleryAsset[]>([]);
+    const [collectionGalleryItems, setCollectionGalleryItems] = useState<GalleryAsset[]>([]);
     const [selectedImageForTool, setSelectedImageForTool] = useState<GalleryItem | null>(null);
     const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -103,6 +104,7 @@ const App: React.FC = () => {
                 const sessionData = await loadSession(user.uid);
                 setIdeationGalleryItems(sessionData.ideationGalleryItems);
                 setFinalGalleryItems(sessionData.finalGalleryItems);
+                setCollectionGalleryItems(sessionData.collectionGalleryItems || []);
                 setGeneratedPatterns(sessionData.generatedPatterns);
                 setCollections(sessionData.collections);
                 setItemSlots(sessionData.itemSlots);
@@ -129,6 +131,7 @@ const App: React.FC = () => {
                 await saveSession({ 
                     ideationGalleryItems, 
                     finalGalleryItems, 
+                    collectionGalleryItems,
                     generatedPatterns,
                     collections,
                     itemSlots
@@ -139,7 +142,7 @@ const App: React.FC = () => {
         }, 2000); // 2-second debounce
 
         return () => clearTimeout(timeoutId);
-    }, [collections, itemSlots, ideationGalleryItems, finalGalleryItems, generatedPatterns, isInitialized, user]);
+    }, [collections, itemSlots, ideationGalleryItems, finalGalleryItems, collectionGalleryItems, generatedPatterns, isInitialized, user]);
 
     // Collection Management
     const handleCreateCollection = (newCollection: Collection, initialItems: string[] = []) => {
@@ -574,7 +577,7 @@ const App: React.FC = () => {
         else if (item.tag === 'Studio Image') setActiveTool('studioImageEditor');
     }, []);
 
-    const handleSelectGalleryItem = useCallback((item: GalleryAsset, galleryType: 'ideation' | 'finals') => {
+    const handleSelectGalleryItem = useCallback((item: GalleryAsset, galleryType: 'ideation' | 'finals' | 'collection') => {
         // IMPORTANT: If item belongs to a slot, set it as active so further actions (visualise, tech pack) are linked
         if (item.itemSlotId) {
             setActiveSlotId(item.itemSlotId);
@@ -796,6 +799,31 @@ const App: React.FC = () => {
         setIdeationGalleryItems(prev => [...prev, duplicatedItem]);
     }, []);
 
+    const handleGenerateRangeVisual = useCallback(async (base64Image: string, prompt: string) => {
+        setIsLoading(true);
+        setLoadingMessage('Staging range visual...');
+        try {
+            const { generateRangeVisual } = await import('./services/geminiService');
+            const resultImage = await generateRangeVisual(base64Image, prompt);
+            
+            const newAsset: GalleryItem = {
+                id: self.crypto.randomUUID(),
+                src: `data:${resultImage.mimeType};base64,${resultImage.data}`,
+                source: resultImage,
+                prompt: `Range: ${prompt}`,
+                tag: 'Studio Image',
+                collectionId: activeCollection?.id,
+            };
+            
+            setCollectionGalleryItems(prev => [...prev, newAsset]);
+        } catch (e) {
+            console.error("Failed to stage range", e);
+            setError("Failed to generate range visual. " + (e as Error).message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [activeCollection]);
+
     const handleUpdateTechPackContent = (techPackId: string, newData: TechPackSection[], newSizingData?: SizingRow[], newCostingData?: CostingRow[], newPlacementData?: PlacementPin[], newBomData?: BOMRow[], newDppData?: TechPackItem[]) => {
         const updater = (items: GalleryAsset[]) => items.map(item => item.id === techPackId && item.tag === 'Tech Pack' ? { ...item, data: newData, sizingData: newSizingData, costingData: newCostingData, placementData: newPlacementData, bomData: newBomData, dpp: newDppData } : item);
         setFinalGalleryItems(updater);
@@ -837,6 +865,7 @@ const App: React.FC = () => {
                     onEnterItem={handleEnterItemWorkspace}
                     onDeleteItemSlot={handleDeleteItemSlot}
                     onDuplicateItem={handleDuplicateItem}
+                    onGenerateRangeVisual={handleGenerateRangeVisual}
                     collection={activeCollection}
                 />
             );
@@ -962,6 +991,8 @@ const App: React.FC = () => {
                 <DualGallery
                     ideationItems={visibleIdeation}
                     finalItems={visibleFinals}
+                    collectionGalleryItems={collectionGalleryItems}
+                    isCollectionLevelView={!activeSlotId}
                     onSelectItem={handleSelectGalleryItem}
                     onEditItem={handleEditItem}
                     onShowTraceability={(item) => setTraceabilityStartItem(item)}

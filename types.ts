@@ -9,11 +9,11 @@ export interface ImageSource {
   mimeType?: string;
 }
 
-export const getDisplaySrc = (source: ImageSource | undefined): string => {
-    if (!source) return '';
+export const getDisplaySrc = (source: ImageSource | undefined): string | undefined => {
+    if (!source) return undefined;
     if (source.url) return source.url;
     if (source.data && source.mimeType) return `data:${source.mimeType};base64,${source.data}`;
-    return '';
+    return undefined;
 };
 
 export interface Collection {

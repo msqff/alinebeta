@@ -5,7 +5,9 @@ import { SessionGallery } from './SessionGallery';
 interface DualGalleryProps {
     ideationItems: GalleryAsset[];
     finalItems: GalleryAsset[];
-    onSelectItem: (item: GalleryAsset, galleryType: 'ideation' | 'finals') => void;
+    collectionGalleryItems?: GalleryAsset[];
+    isCollectionLevelView?: boolean;
+    onSelectItem: (item: GalleryAsset, galleryType: 'ideation' | 'finals' | 'collection') => void;
     onEditItem: (item: GalleryItem) => void;
     onShowTraceability: (item: GalleryAsset) => void;
     onGenerateTechPack: (item: GalleryItem) => void;
@@ -19,12 +21,14 @@ interface DualGalleryProps {
     onOpenFullscreen: () => void;
 }
 
-type ActiveGallery = 'ideation' | 'finals';
+type ActiveGallery = 'ideation' | 'finals' | 'collection';
 
 export const DualGallery: React.FC<DualGalleryProps> = (props) => {
     const [activeGallery, setActiveGallery] = useState<ActiveGallery>('ideation');
 
-    const items = activeGallery === 'ideation' ? props.ideationItems : props.finalItems;
+    const items = activeGallery === 'ideation' ? props.ideationItems : 
+                  activeGallery === 'finals' ? props.finalItems : 
+                  (props.collectionGalleryItems || []);
 
     return (
         <aside className="w-full bg-slate-950/60 backdrop-blur-xl border-t border-white/10 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
@@ -43,6 +47,14 @@ export const DualGallery: React.FC<DualGalleryProps> = (props) => {
                         >
                             Finals ({props.finalItems.length})
                         </button>
+                        {props.isCollectionLevelView && (
+                            <button
+                                onClick={() => setActiveGallery('collection')}
+                                className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeGallery === 'collection' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                            >
+                                Range Visuals ({props.collectionGalleryItems?.length || 0})
+                            </button>
+                        )}
                     </div>
                     <button
                         onClick={props.onOpenFullscreen}

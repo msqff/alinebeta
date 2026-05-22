@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { ItemSlot, GalleryAsset, Collection, getDisplaySrc } from '../types';
 import { generateItemSuggestions } from '../services/geminiService';
 
+import { CollectionVisualizerModal } from './CollectionVisualizerModal';
+
 interface ItemManagerProps {
     slots: ItemSlot[];
     assets: GalleryAsset[]; // All assets in this collection
@@ -13,15 +15,17 @@ interface ItemManagerProps {
     onEnterItem: (slotId: string) => void;
     onDeleteItemSlot: (slotId: string) => void;
     onDuplicateItem?: (item: GalleryAsset) => void;
+    onGenerateRangeVisual?: (base64Image: string, prompt: string) => void;
     collection: Collection;
 }
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onDeleteItemSlot, onDuplicateItem, collection }) => {
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, collection }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [slotToDelete, setSlotToDelete] = useState<ItemSlot | null>(null);
+    const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
     // Fetch suggestions on mount or when slot count changes significantly (though we mostly want stable suggestions)
     useEffect(() => {
@@ -111,11 +115,11 @@ const ItemSlotCard: React.FC<{
         ? (isFinalRender ? 'Final Render' : 'Draft Render') 
         : (isFinalSketch ? 'Final Sketch' : 'Initial Sketch');
         
-    const getAssetDisplaySrc = (asset: GalleryAsset): string => {
+    const getAssetDisplaySrc = (asset: GalleryAsset): string | undefined => {
         if ('src' in asset) return asset.src;
         if (asset.tag === 'Mood Board' && asset.sources.length > 0) return getDisplaySrc(asset.sources[0]);
         if (asset.tag === 'Multi-View' && asset.views.length > 0) return getDisplaySrc(asset.views[0].source);
-        return '';
+        return undefined;
     };
 
     return (
@@ -271,17 +275,28 @@ const ItemSlotCard: React.FC<{
                     <h2 className="text-3xl font-bold text-white tracking-tight">Collection Line Sheet</h2>
                     <p className="text-slate-400 mt-1 font-light">Manage your item slots. All items inherit the Master Style DNA.</p>
                 </div>
-                {!isAdding && (
-                    <button 
-                        onClick={() => setIsAdding(true)}
-                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/20 transition-all flex items-center"
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsVisualizerOpen(true)}
+                        className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl shadow-lg border border-slate-700 transition-all flex items-center"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Add New Item Slot
+                        Range Visualisation
                     </button>
-                )}
+                    {!isAdding && (
+                        <button 
+                            onClick={() => setIsAdding(true)}
+                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/20 transition-all flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add New Item Slot
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar pb-20 items-stretch">
@@ -404,6 +419,14 @@ const ItemSlotCard: React.FC<{
                     </div>
                 </div>,
                 document.body
+            )}
+            
+            {isVisualizerOpen && (
+                <CollectionVisualizerModal 
+                    finalAssets={finalAssets} 
+                    onClose={() => setIsVisualizerOpen(false)} 
+                    onGenerate={onGenerateRangeVisual!}
+                />
             )}
         </div>
     );

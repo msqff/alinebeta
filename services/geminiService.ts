@@ -927,3 +927,46 @@ export const generateDPPBaseline = async (image: ImageSource, designAttributes?:
         throw new Error(`Failed to parse DPP data: ${e.message}`);
     }
 };
+
+export const generateRangeVisual = async (compositeBase64: string, stagingPrompt: string): Promise<ImageSource> => {
+    // Generate a new image based on the composite using the provided staging prompt.
+    // The model needs to preserve the designs within the composite.
+    const ai = getAI();
+    let data = compositeBase64;
+    let mimeType = 'image/jpeg';
+    
+    if (compositeBase64.startsWith('data:')) {
+        const matches = compositeBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+            mimeType = matches[1];
+            data = matches[2];
+        } else {
+            console.warn("Could not parse data URI, attempting to upload as is");
+        }
+    }
+
+    const uploadedUri = await uploadBase64(data, mimeType);
+    
+    const enhancedPrompt = `Take this composite image of garments. You MUST perfectly preserve the exact design, silhouette, and details of each garment. Re-stage them together based on the following environment: ${stagingPrompt}. Harmonize the lighting, shadows, and background so it looks like a single photorealistic photograph. Ensure the final background does not clash with the actual clothing designs.`;
+
+    const response = await ai.models.generateImages({
+        model: 'imagen-3.0-generate-002',
+        prompt: enhancedPrompt,
+        config: {
+            outputMimeType: 'image/jpeg',
+            aspectRatio: '3:4', // To support wider composites, we could adjust this, but 3:4 is standard portrait fashion. actually maybe 16:9?
+            personGeneration: "DONT_ALLOW" as any, // Change to ALLOW_ADULT if mannequins fail, but STAGING_ENVIRONMENTS asks for mannequins or hangers
+        }
+    });
+
+    if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new Error("API did not return any images.");
+    }
+
+    const generatedImageBase64 = response.generatedImages[0].image.imageBytes;
+    
+    return {
+        data: generatedImageBase64,
+        mimeType: response.generatedImages[0].image.mimeType || 'image/jpeg'
+    };
+};

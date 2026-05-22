@@ -5,6 +5,7 @@ import { collection, doc, setDoc, getDocs, deleteDoc, query, where, writeBatch }
 export interface SessionData {
     ideationGalleryItems: GalleryAsset[];
     finalGalleryItems: GalleryAsset[];
+    collectionGalleryItems?: GalleryAsset[];
     generatedPatterns: GeneratedPattern[];
     collections: Collection[];
     itemSlots: ItemSlot[];
@@ -59,6 +60,7 @@ export const saveSession = async (sessionData: SessionData, userId: string): Pro
         const allAssets = [
             ...sessionData.ideationGalleryItems.map(a => ({ ...a, _assetGroup: 'ideation' })),
             ...sessionData.finalGalleryItems.map(a => ({ ...a, _assetGroup: 'final' })),
+            ...(sessionData.collectionGalleryItems || []).map(a => ({ ...a, _assetGroup: 'collection' })),
             ...sessionData.generatedPatterns.map(a => ({ ...a, _assetGroup: 'pattern' }))
         ];
         processItems(allAssets, 'assets');
@@ -158,6 +160,7 @@ export const loadSession = async (userId: string): Promise<SessionData> => {
         const data: SessionData = {
             ideationGalleryItems: [],
             finalGalleryItems: [],
+            collectionGalleryItems: [],
             generatedPatterns: [],
             collections: collections || [],
             itemSlots: itemSlots || []
@@ -171,6 +174,9 @@ export const loadSession = async (userId: string): Promise<SessionData> => {
                 } else if (asset._assetGroup === 'final') {
                     delete asset._assetGroup;
                     data.finalGalleryItems.push(asset as GalleryAsset);
+                } else if (asset._assetGroup === 'collection') {
+                    delete asset._assetGroup;
+                    data.collectionGalleryItems!.push(asset as GalleryAsset);
                 } else if (asset._assetGroup === 'pattern') {
                     delete asset._assetGroup;
                     data.generatedPatterns.push(asset as GeneratedPattern);

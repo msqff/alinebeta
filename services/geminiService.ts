@@ -210,7 +210,7 @@ export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ sty
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts },
         config: { responseMimeType: 'application/json' }
     });
@@ -223,7 +223,7 @@ export const generateCollectionIntakeFromText = async (brief: string, audience: 
     const prompt = `Act as a Fashion Creative Director. I am starting a new collection. Target audience: ${audience}. Design brief: ${brief}. Generate a cohesive 'Style DNA' (a concise 50-word paragraph describing the aesthetic, silhouettes, and textures) and extract a 5-color hex code 'Palette' that perfectly represents this brief. Return strict JSON format: { "styleDna": "string", "palette": ["#hex", "#hex", "#hex", "#hex", "#hex"] }.`;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: prompt,
         config: {
             responseMimeType: 'application/json',
@@ -295,7 +295,7 @@ export const generateItemSuggestions = async (
     ]`;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts: [{ text: prompt }] },
         config: { responseMimeType: 'application/json' }
     });
@@ -315,7 +315,7 @@ export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: strin
     ];
 
     const summaryResponse = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts: summaryParts },
     });
     const summary = summaryResponse.text || '';
@@ -692,7 +692,7 @@ export const generateTechPack = async (image: ImageSource, additionalImages: Ima
     parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts },
         config: {
             responseMimeType: 'application/json',
@@ -788,7 +788,7 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts },
         config: { responseMimeType: 'application/json' }
     });
@@ -833,7 +833,7 @@ export const generateShopperPulse = async (image: ImageSource, price: number, pe
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts },
         config: { responseMimeType: 'application/json' }
     });
@@ -870,7 +870,7 @@ export const analyzeReferenceImage = async (image: ImageSource): Promise<{ descr
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { role: 'user', parts },
         config: {
             responseMimeType: "application/json",
@@ -911,7 +911,7 @@ export const generateDPPBaseline = async (image: ImageSource, designAttributes?:
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
+        model: 'gemini-3.5-flash',
         contents: { parts },
         config: { responseMimeType: 'application/json' }
     });

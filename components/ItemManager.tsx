@@ -423,7 +423,7 @@ const ItemSlotCard: React.FC<{
             
             {isVisualizerOpen && (
                 <CollectionVisualizerModal 
-                    finalAssets={finalAssets} 
+                    finalAssets={finalAssets.filter(a => a.tag === 'Studio Image' && slots.some(s => s.id === a.itemSlotId))} 
                     onClose={() => setIsVisualizerOpen(false)} 
                     onGenerate={onGenerateRangeVisual!}
                 />

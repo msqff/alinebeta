@@ -16,10 +16,20 @@ const STAGING_ENVIRONMENTS = [
 ];
 
 export const CollectionVisualizerModal: React.FC<CollectionVisualizerModalProps> = ({ finalAssets, onClose, onGenerate }) => {
+    // Only bring back finalised studio images from the collection
+    const studioImages = finalAssets.filter(asset => asset.tag === 'Studio Image');
+
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [environment, setEnvironment] = useState(STAGING_ENVIRONMENTS[0]);
     const [isGenerating, setIsGenerating] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const getAssetSrc = (asset: GalleryAsset): string | undefined => {
+        if ('src' in asset) return asset.src;
+        if (asset.tag === 'Mood Board' && asset.sources.length > 0) return getDisplaySrc(asset.sources[0]);
+        if (asset.tag === 'Multi-View' && asset.views.length > 0) return getDisplaySrc(asset.views[0].source);
+        return undefined;
+    };
 
     const toggleSelection = (id: string) => {
         if (selectedIds.includes(id)) {
@@ -38,13 +48,13 @@ export const CollectionVisualizerModal: React.FC<CollectionVisualizerModalProps>
 
         // Load images
         const imagesToLoad = selectedIds.map(id => {
-            const asset = finalAssets.find(a => a.id === id);
+            const asset = studioImages.find(a => a.id === id);
             return new Promise<HTMLImageElement>((resolve, reject) => {
                 const img = new Image();
                 img.crossOrigin = "anonymous";
                 img.onload = () => resolve(img);
                 img.onerror = reject;
-                img.src = getDisplaySrc(asset!)!;
+                img.src = getAssetSrc(asset!)!;
             });
         });
 
@@ -106,7 +116,7 @@ export const CollectionVisualizerModal: React.FC<CollectionVisualizerModalProps>
 
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-900/30">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {finalAssets.map(asset => {
+                        {studioImages.map(asset => {
                             const isSelected = selectedIds.includes(asset.id);
                             const isDisabled = !isSelected && selectedIds.length >= 4;
                             
@@ -119,7 +129,7 @@ export const CollectionVisualizerModal: React.FC<CollectionVisualizerModalProps>
                                         isDisabled ? 'border-slate-800 opacity-40 cursor-not-allowed' : 'border-transparent hover:border-slate-600'
                                     }`}
                                 >
-                                    <img src={getDisplaySrc(asset)} alt="Variant" className="w-full h-full object-cover bg-slate-800" />
+                                    <img src={getAssetSrc(asset)} alt="Variant" className="w-full h-full object-cover bg-slate-800" />
                                     {isSelected && (
                                         <div className="absolute top-2 right-2 bg-indigo-500 text-white rounded-full p-1 shadow-md">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,9 +141,9 @@ export const CollectionVisualizerModal: React.FC<CollectionVisualizerModalProps>
                             )
                         })}
                     </div>
-                    {finalAssets.length === 0 && (
+                    {studioImages.length === 0 && (
                         <div className="text-center text-slate-500 py-12">
-                            No finalized assets in this collection.
+                            No finalized studio images in this collection.
                         </div>
                     )}
                 </div>

@@ -292,7 +292,8 @@ export const generateItemSuggestions = async (
     Return JSON array:
     [
         { "name": "Item Name", "reasoning": "Brief reason why this fits" }
-    ]`;
+    ]
+    Do not include trailing commas in JSON array.`;
 
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
@@ -300,7 +301,14 @@ export const generateItemSuggestions = async (
         config: { responseMimeType: 'application/json' }
     });
 
-    return JSON.parse(response.text || '[]');
+    try {
+        return JSON.parse(extractJSON(response.text || '[]'));
+    } catch (e: any) {
+        console.warn("Retrying JSON suggestion parse fallback", e);
+        // Fallback for tricky trailing commas if extractJSON fails
+        const cleaned = (response.text || '[]').replace(/,\s*([\]}])/g, '$1');
+        return JSON.parse(extractJSON(cleaned));
+    }
 };
 
 export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: string): Promise<{ summary: string; sketches: ImageSource[] }> => {
@@ -945,28 +953,25 @@ export const generateRangeVisual = async (compositeBase64: string, stagingPrompt
         }
     }
 
-    const uploadedUri = await uploadBase64(data, mimeType);
-    
     const enhancedPrompt = `Take this composite image of garments. You MUST perfectly preserve the exact design, silhouette, and details of each garment. Re-stage them together based on the following environment: ${stagingPrompt}. Harmonize the lighting, shadows, and background so it looks like a single photorealistic photograph. Ensure the final background does not clash with the actual clothing designs.`;
 
-    const response = await ai.models.generateImages({
-        model: 'imagen-3.0-generate-002',
-        prompt: enhancedPrompt,
-        config: {
-            outputMimeType: 'image/jpeg',
-            aspectRatio: '3:4', // To support wider composites, we could adjust this, but 3:4 is standard portrait fashion. actually maybe 16:9?
-            personGeneration: "DONT_ALLOW" as any, // Change to ALLOW_ADULT if mannequins fail, but STAGING_ENVIRONMENTS asks for mannequins or hangers
-        }
+    const parts: any[] = [
+        { inlineData: { data, mimeType } },
+        { text: enhancedPrompt }
+    ];
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts },
+        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] }
     });
 
-    if (!response.generatedImages || response.generatedImages.length === 0) {
-        throw new Error("API did not return any images.");
-    }
-
-    const generatedImageBase64 = response.generatedImages[0].image.imageBytes;
+    const imgData = extractImageOrThrow(response, "Range Visualiser");
+    const url = await uploadBase64(imgData.data, imgData.mimeType);
     
     return {
-        data: generatedImageBase64,
-        mimeType: response.generatedImages[0].image.mimeType || 'image/jpeg'
+        data: imgData.data,
+        mimeType: imgData.mimeType,
+        url: url
     };
 };

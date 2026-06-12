@@ -34,11 +34,14 @@ const AuditSectionDisplay: React.FC<{ title: string; data: AuditSection; icon: R
         {data.issues && data.issues.length > 0 ? (
             <div className="space-y-4 ml-2">
                 {data.issues.map((issue, idx) => {
-                    const isSelected = selectedFixes.includes(issue.recommendation);
+                    // Fallbacks for backwards compatibility if recommendation is still used temporarily during transition
+                    const targetPrompt = issue.target_state_prompt || (issue as any).recommendation;
+                    const changeDesc = issue.change_description || (issue as any).recommendation;
+                    const isSelected = selectedFixes.includes(targetPrompt);
                     return (
                         <div 
                             key={idx} 
-                            onClick={() => onToggleFix(issue.recommendation)}
+                            onClick={() => onToggleFix(targetPrompt)}
                             className={`relative rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-900/20 border-indigo-500 shadow-lg shadow-indigo-500/10' : 'bg-slate-800/40 border border-slate-700 hover:bg-slate-800/70'}`}
                         >
                             {/* Custom Checkmark Icon */}
@@ -60,7 +63,7 @@ const AuditSectionDisplay: React.FC<{ title: string; data: AuditSection; icon: R
                             {/* Solution */}
                             <div className="flex items-start ml-8">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                <p className="text-sm font-medium text-indigo-300 leading-relaxed">{issue.recommendation}</p>
+                                <p className="text-sm font-medium text-indigo-300 leading-relaxed">{changeDesc}</p>
                             </div>
                         </div>
                     );

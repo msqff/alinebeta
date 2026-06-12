@@ -339,8 +339,8 @@ const App: React.FC = () => {
         } else if (item && item.tag === 'Studio Image') {
             setViewingReview(null);
             setInitialToolPrompt(prompt);
-            setSelectedImageForTool(item as GalleryItem);
-            setActiveTool('studioImageEditor'); // studio images go to studio editor, but wait, the instructions specifically said "Product Visualizer". Let's route to visualiser or editor based on type as requested, or just always visualiser if it's considered base. Visualiser accepts Sketch. If it's a Studio Image, the user wants to tweak it. Let's just use the studio image editor if it's a studio image for safety, or we can just send it to visualizer if it accepts it. Let's just do studioImageEditor for studio images and visualiser for sketches.
+            setEditingItem(item as GalleryItem);
+            setActiveTool('studioImageEditor');
         }
     };
 
@@ -711,7 +711,13 @@ const App: React.FC = () => {
                 itemSlotId: targetSlotId
             };
 
-            setFinalGalleryItems(prev => [...prev, newReviewAsset]);
+            const isIdeation = ideationGalleryItems.some(i => i.id === item.id);
+            if (isIdeation) {
+                setIdeationGalleryItems(prev => [...prev, newReviewAsset]);
+            } else {
+                setFinalGalleryItems(prev => [...prev, newReviewAsset]);
+            }
+            
             setViewingReview(newReviewAsset);
         } catch (e: any) {
             setError(e.message || "Failed to conduct product review.");

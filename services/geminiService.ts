@@ -753,16 +753,20 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     
     const prompt = `Act as a strictly critical Risk Compliance Officer (IP & Safety) and a Senior Production Manager. Conduct a harsh, uncompromising audit of the attached fashion design${additionalImages && additionalImages.length > 0 ? ' (examining all provided angles/views)' : ''}.
 
-    1. Legal Audit: Scrutinize for ANY resemblance to known trademarks, logos, iconic trade dress (e.g., Adidas stripes, Burberry check, Gucci horsebit, Nike swoosh), or copyright protected artwork/characters. Be extremely conservative; if it looks even slightly familiar or derivative, FLAG IT as a risk. Provide an actionable recommendation to fix the design to avoid IP issues phrased as an image-generation prompt instruction (e.g. "remove all three-stripe detailing and replace with a solid color panel").
+    1. Legal Audit: Scrutinize for ANY resemblance to known trademarks, logos, iconic trade dress (e.g., Adidas stripes, Burberry check, Gucci horsebit, Nike swoosh), or copyright protected artwork/characters. Be extremely conservative; if it looks even slightly familiar or derivative, FLAG IT as a risk. Provide an actionable recommendation. Split the fix into a friendly 'change_description' and a descriptive 'target_state_prompt' optimized for an inpainting model.
     2. Safety Audit: Rigorously identify potential physical hazards.
        - Strangulation: Drawstrings/cords near neck/hood (strictly prohibited in many regions for childrenswear).
        - Choking: Buttons, loose embellishments, beads, or sequins (especially on childrenswear).
        - Entrapment: Zippers, loops, or toggles.
        - Flammability: Assess fabric drape/texture for potential high flammability risks (e.g., sheer synthetics, high pile).
-       Provide an actionable recommendation for every hazard phrased as an image-generation prompt instruction (e.g. "remove drawstrings and replace with elastic waistband").
-    3. Fabrication Audit: Identify potential manufacturing challenges. Look for impossible seams, unrealistic drapes, or details that would be difficult or expensive to produce in mass manufacturing. Highlight areas where the image fidelity might be misleading (e.g., "Texture implies heavy wool but drape suggests silk", "Seam lines disappear into nowhere"). Provide an actionable recommendation for each issue phrased as an image-generation prompt instruction (e.g. "adjust the drape to be more structured and less flowing to match the heavy wool texture").
+       Provide an actionable recommendation for every hazard, splitting into 'change_description' and 'target_state_prompt'.
+    3. Fabrication Audit: Identify potential manufacturing challenges. Look for impossible seams, unrealistic drapes, or details that would be difficult or expensive to produce in mass manufacturing. Highlight areas where the image fidelity might be misleading (e.g., "Texture implies heavy wool but drape suggests silk", "Seam lines disappear into nowhere"). Provide an actionable recommendation for each issue, splitting into 'change_description' and 'target_state_prompt'.
 
     ${techPack ? `\n\nUse the following Technical Specifications to inform your safety audit, particularly regarding material composition and construction:\n${JSON.stringify(techPack, null, 2)}` : ''}
+
+    Issue Recommendation Rules:
+    - change_description: CRITICAL: This must be a snappy, action-oriented UI label (maximum 10 words). Do NOT restate the problem or use conversational filler. Start directly with an action verb (e.g., 'Match chest pocket to body fabric', 'Replace hood drawstrings with elastic').
+    - target_state_prompt: CRITICAL: This must be a descriptive prompt of the final target state, BUT it must explicitly include spatial anchoring and location context. The image model needs to know exactly where this feature is located on the garment. (e.g., 'A solid dark grey fabric pocket located on the front left chest, blending seamlessly with the main body', 'A flat elastic waistband with no drawstrings').
 
     \n\nReturn a strict JSON object with this structure:
     {
@@ -770,15 +774,15 @@ export const generateProductReview = async (image: ImageSource, additionalImages
         "status": "PASS" | "FLAGGED",
         "legal_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
+            "issues": [{ "flag": "specific issue found", "change_description": "Friendly, conversational explanation of the fix", "target_state_prompt": "Pure description of target state for inpainting model" }]
         },
         "safety_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
+            "issues": [{ "flag": "specific issue found", "change_description": "Friendly, conversational explanation of the fix", "target_state_prompt": "Pure description of target state for inpainting model" }]
         },
         "fabrication_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
+            "issues": [{ "flag": "specific issue found", "change_description": "Friendly, conversational explanation of the fix", "target_state_prompt": "Pure description of target state for inpainting model" }]
         }
     }
     Output ONLY valid JSON.`;

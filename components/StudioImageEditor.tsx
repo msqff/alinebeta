@@ -6,9 +6,10 @@ interface StudioImageEditorProps {
     onGenerateTweak: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount?: number) => void;
     onBack: () => void;
     inputImage: GalleryItem | null;
+    initialPrompt?: string;
 }
 
-export const StudioImageEditor: React.FC<StudioImageEditorProps> = ({ onGenerateTweak, onBack, inputImage }) => {
+export const StudioImageEditor: React.FC<StudioImageEditorProps> = ({ onGenerateTweak, onBack, inputImage, initialPrompt }) => {
 
     if (!inputImage) {
         return (
@@ -30,6 +31,7 @@ export const StudioImageEditor: React.FC<StudioImageEditorProps> = ({ onGenerate
             onGenerate={onGenerateTweak}
             onBack={onBack}
             inputImage={inputImage}
+            initialPrompt={initialPrompt}
        />
     );
 };

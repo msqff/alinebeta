@@ -10,6 +10,7 @@ interface ImageEditorProps {
     onGenerate: (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount?: number) => void;
     onBack: () => void;
     inputImage: GalleryItem;
+    initialPrompt?: string;
 }
 
 const dataUrlToImageSource = (dataUrl: string): ImageSource => {
@@ -19,9 +20,9 @@ const dataUrlToImageSource = (dataUrl: string): ImageSource => {
 };
 
 export const ImageEditor: React.FC<ImageEditorProps> = ({ 
-    title, description, placeholder, submitButtonText, onGenerate, onBack, inputImage 
+    title, description, placeholder, submitButtonText, onGenerate, onBack, inputImage, initialPrompt 
 }) => {
-    const [prompt, setPrompt] = useState('');
+    const [prompt, setPrompt] = useState(initialPrompt || '');
     const [brushSize, setBrushSize] = useState(40);
     const [imageCount, setImageCount] = useState(4);
     const canvasRef = useRef<InpaintingCanvasRef>(null);

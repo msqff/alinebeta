@@ -40,7 +40,8 @@ export interface ItemSlot {
 
 export interface AuditSection {
     risk_level: 'Low' | 'Medium' | 'High';
-    flags: string[];
+    flags?: string[];
+    issues?: { flag: string; recommendation: string; }[];
 }
 
 export interface ProductReviewResult {

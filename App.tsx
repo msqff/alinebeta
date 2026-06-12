@@ -48,6 +48,7 @@ const App: React.FC = () => {
     const [finalGalleryItems, setFinalGalleryItems] = useState<GalleryAsset[]>([]);
     const [collectionGalleryItems, setCollectionGalleryItems] = useState<GalleryAsset[]>([]);
     const [selectedImageForTool, setSelectedImageForTool] = useState<GalleryItem | null>(null);
+    const [initialToolPrompt, setInitialToolPrompt] = useState<string | undefined>(undefined);
     const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string>('');
@@ -295,6 +296,7 @@ const App: React.FC = () => {
     const handleSelectTool = (tool: Tool) => {
         setActiveTool(tool);
         setError(null);
+        setInitialToolPrompt(undefined);
         
         let preselectedImage = null;
         if (activeSlotId) {
@@ -320,11 +322,27 @@ const App: React.FC = () => {
     const handleBackToMenu = () => {
         setActiveTool(null);
         setSelectedImageForTool(null);
+        setInitialToolPrompt(undefined);
         setEditingItem(null);
         setError(null);
         // If we have an active slot, we go back to the ToolSelector (Workspace), not main menu
         // so we do NOT clear activeSlotId here
     }
+
+    const handleNavigateToVisualizer = (baseAssetId: string, prompt: string) => {
+        const item = [...ideationGalleryItems, ...finalGalleryItems, ...collectionGalleryItems].find(i => i.id === baseAssetId);
+        if (item && item.tag === 'Sketch') {
+            setViewingReview(null);
+            setInitialToolPrompt(prompt);
+            setSelectedImageForTool(item as GalleryItem);
+            setActiveTool('visualiser');
+        } else if (item && item.tag === 'Studio Image') {
+            setViewingReview(null);
+            setInitialToolPrompt(prompt);
+            setSelectedImageForTool(item as GalleryItem);
+            setActiveTool('studioImageEditor'); // studio images go to studio editor, but wait, the instructions specifically said "Product Visualizer". Let's route to visualiser or editor based on type as requested, or just always visualiser if it's considered base. Visualiser accepts Sketch. If it's a Studio Image, the user wants to tweak it. Let's just use the studio image editor if it's a studio image for safety, or we can just send it to visualizer if it accepts it. Let's just do studioImageEditor for studio images and visualiser for sketches.
+        }
+    };
 
     // Helper to determine the correct Slot ID for a new asset
     const getTargetSlotId = (explicitSlotId?: string | null, parentId?: string): string | undefined => {
@@ -839,11 +857,11 @@ const App: React.FC = () => {
              switch (activeTool) {
                 case 'moodboard': return <MoodBoardAnalyst onAnalysisComplete={handleAnalysisComplete} onBack={handleBackToMenu} />;
                 case 'sketch': return <SketchGenerator onGenerate={handleGenerateSketches} onBack={handleBackToMenu} />;
-                case 'visualiser': return <ProductVisualiser onVisualise={handleVisualiseProduct} onBack={handleBackToMenu} inputImage={selectedImageForTool} onGeneratePattern={handleGeneratePattern} />;
+                case 'visualiser': return <ProductVisualiser onVisualise={handleVisualiseProduct} onBack={handleBackToMenu} inputImage={selectedImageForTool} onGeneratePattern={handleGeneratePattern} initialPrompt={initialToolPrompt} />;
                 case 'multiview': return <MultiViewGenerator onGenerate={handleGenerateMultiViews} onSaveToGallery={handleSaveMultiViews} onBack={handleBackToMenu} inputImage={selectedImageForTool} />;
                 case 'model': return <ModelPlacement onPlace={handlePlaceOnModel} onBack={handleBackToMenu} inputImage={selectedImageForTool} />;
                 case 'sketchEditor': return <SketchEditor onGenerateTweak={handleGenerateSketchTweak} onBack={handleBackToMenu} inputImage={editingItem} />;
-                case 'studioImageEditor': return <StudioImageEditor onGenerateTweak={handleGenerateStudioImageTweak} onBack={handleBackToMenu} inputImage={editingItem} />;
+                case 'studioImageEditor': return <StudioImageEditor onGenerateTweak={handleGenerateStudioImageTweak} onBack={handleBackToMenu} inputImage={editingItem || selectedImageForTool} initialPrompt={initialToolPrompt} />;
                 case 'techpack': return <TechPackGenerator onGenerate={handleTechPackWorkflow} onProceedWithImage={() => { if(selectedImageForTool) { handleGenerateTechPack(selectedImageForTool); handleBackToMenu(); } }} inputImage={selectedImageForTool} onBack={handleBackToMenu} />;
                 case 'review': return <ProductReviewTool onReview={handleProductReviewWorkflow} onProceedWithImage={() => { if(selectedImageForTool) { handleRunComplianceCheck(selectedImageForTool); handleBackToMenu(); } }} inputImage={selectedImageForTool} onBack={handleBackToMenu} />;
                 case 'shopperPulse': return <ShopperPulseTool onPulse={handleShopperPulseWorkflow} onProceedWithImage={() => { if(selectedImageForTool) { setItemPendingShopperPulse(selectedImageForTool); handleBackToMenu(); } }} inputImage={selectedImageForTool} onBack={handleBackToMenu} />;
@@ -971,7 +989,7 @@ const App: React.FC = () => {
             {isPatternModalOpen && <PatternGalleryModal patterns={generatedPatterns} onClose={() => setIsPatternModalOpen(false)} />}
             {isCollectionSettingsOpen && activeCollection && <CollectionSettingsModal collection={activeCollection} onClose={() => setIsCollectionSettingsOpen(false)} onSave={handleEditCollection} />}
             {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData)} />}
-            {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} />}
+            {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} onNavigateToVisualizer={handleNavigateToVisualizer} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}
             
             <Header 

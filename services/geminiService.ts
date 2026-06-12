@@ -753,31 +753,32 @@ export const generateProductReview = async (image: ImageSource, additionalImages
     
     const prompt = `Act as a strictly critical Risk Compliance Officer (IP & Safety) and a Senior Production Manager. Conduct a harsh, uncompromising audit of the attached fashion design${additionalImages && additionalImages.length > 0 ? ' (examining all provided angles/views)' : ''}.
 
-    1. Legal Audit: Scrutinize for ANY resemblance to known trademarks, logos, iconic trade dress (e.g., Adidas stripes, Burberry check, Gucci horsebit, Nike swoosh), or copyright protected artwork/characters. Be extremely conservative; if it looks even slightly familiar or derivative, FLAG IT as a risk.
+    1. Legal Audit: Scrutinize for ANY resemblance to known trademarks, logos, iconic trade dress (e.g., Adidas stripes, Burberry check, Gucci horsebit, Nike swoosh), or copyright protected artwork/characters. Be extremely conservative; if it looks even slightly familiar or derivative, FLAG IT as a risk. Provide an actionable recommendation to fix the design to avoid IP issues phrased as an image-generation prompt instruction (e.g. "remove all three-stripe detailing and replace with a solid color panel").
     2. Safety Audit: Rigorously identify potential physical hazards.
        - Strangulation: Drawstrings/cords near neck/hood (strictly prohibited in many regions for childrenswear).
        - Choking: Buttons, loose embellishments, beads, or sequins (especially on childrenswear).
        - Entrapment: Zippers, loops, or toggles.
        - Flammability: Assess fabric drape/texture for potential high flammability risks (e.g., sheer synthetics, high pile).
-    3. Fabrication Audit: Identify potential manufacturing challenges. Look for impossible seams, unrealistic drapes, or details that would be difficult or expensive to produce in mass manufacturing. Highlight areas where the image fidelity might be misleading (e.g., "Texture implies heavy wool but drape suggests silk", "Seam lines disappear into nowhere").
+       Provide an actionable recommendation for every hazard phrased as an image-generation prompt instruction (e.g. "remove drawstrings and replace with elastic waistband").
+    3. Fabrication Audit: Identify potential manufacturing challenges. Look for impossible seams, unrealistic drapes, or details that would be difficult or expensive to produce in mass manufacturing. Highlight areas where the image fidelity might be misleading (e.g., "Texture implies heavy wool but drape suggests silk", "Seam lines disappear into nowhere"). Provide an actionable recommendation for each issue phrased as an image-generation prompt instruction (e.g. "adjust the drape to be more structured and less flowing to match the heavy wool texture").
 
     ${techPack ? `\n\nUse the following Technical Specifications to inform your safety audit, particularly regarding material composition and construction:\n${JSON.stringify(techPack, null, 2)}` : ''}
 
     \n\nReturn a strict JSON object with this structure:
     {
         "compliance_score": number (0-100, where 100 is perfectly safe/legal/feasible. Be harsh with deductions for risks),
-        "status": "PASS" or "FLAGGED",
+        "status": "PASS" | "FLAGGED",
         "legal_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "flags": ["string", "string"] (list of specific issues found, empty if none)
+            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
         },
         "safety_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "flags": ["string", "string"] (list of specific issues found, empty if none)
+            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
         },
         "fabrication_audit": {
             "risk_level": "Low" | "Medium" | "High",
-            "flags": ["string", "string"] (list of specific issues found, empty if none)
+            "issues": [{ "flag": "specific issue found", "recommendation": "actionable fix instruction for an image generation prompt" }]
         }
     }
     Output ONLY valid JSON.`;

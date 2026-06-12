@@ -9,10 +9,11 @@ interface ProductVisualiserProps {
     onBack: () => void;
     inputImage: GalleryItem | null;
     onGeneratePattern: (prompt: string, imageCount?: number) => Promise<GeneratedPattern[]>;
+    initialPrompt?: string;
 }
 
-export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualise, onBack, inputImage, onGeneratePattern }) => {
-    const [prompt, setPrompt] = useState('');
+export const ProductVisualiser: React.FC<ProductVisualiserProps> = ({ onVisualise, onBack, inputImage, onGeneratePattern, initialPrompt }) => {
+    const [prompt, setPrompt] = useState(initialPrompt || '');
     const [baseImage, setBaseImage] = useState<ImageSource | null>(inputImage?.source || null);
     const [patternImage, setPatternImage] = useState<ImageSource | null>(null);
     const [baseImagePreview, setBaseImagePreview] = useState<string | null>(inputImage?.src || null);

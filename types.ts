@@ -1,4 +1,6 @@
 
+export interface ChatMessage { role: 'user' | 'assistant'; text: string; }
+
 export type Tool = 'sketch' | 'visualiser' | 'multiview' | 'model' | 'sketchEditor' | 'moodboard' | 'studioImageEditor' | 'techpack' | 'review' | 'shopperPulse';
 
 export type GalleryTag = 'Sketch' | 'Studio Image' | 'Model Shot' | 'Mood Board' | 'Tech Pack' | 'Product Review' | 'Multi-View';

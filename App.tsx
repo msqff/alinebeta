@@ -242,6 +242,10 @@ const App: React.FC = () => {
         setSelectedImageForTool(null);
     };
 
+    const handleRenameItemSlot = (slotId: string, newName: string) => {
+        setItemSlots(prev => prev.map(s => s.id === slotId ? { ...s, name: newName } : s));
+    };
+
     const handleExitItemWorkspace = () => {
         setActiveSlotId(null);
         setActiveTool(null);
@@ -863,9 +867,11 @@ const App: React.FC = () => {
                     onSelectItem={handleSelectSlotItem}
                     onOpenTool={handleOpenToolForSlot}
                     onEnterItem={handleEnterItemWorkspace}
+                    onRenameItemSlot={handleRenameItemSlot}
                     onDeleteItemSlot={handleDeleteItemSlot}
                     onDuplicateItem={handleDuplicateItem}
                     onGenerateRangeVisual={handleGenerateRangeVisual}
+                    onShowTraceability={(item) => setTraceabilityStartItem(item)}
                     collection={activeCollection}
                 />
             );

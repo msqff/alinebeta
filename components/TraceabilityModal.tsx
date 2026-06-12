@@ -31,17 +31,63 @@ const tagColor: { [key in GalleryAsset['tag']]: string } = {
     'Multi-View': 'bg-orange-500',
 };
 
+const DataPanel: React.FC<{ item: GalleryAsset }> = ({ item }) => {
+    // Determine if we have any data to show
+    const hasPrompt = 'prompt' in item && item.prompt;
+    const hasAttributes = 'designAttributes' in item && item.designAttributes && Object.keys(item.designAttributes).length > 0;
+    const hasSummary = 'summary' in item && item.summary;
+    const isTechPack = item.tag === 'Tech Pack';
+    
+    if (!hasPrompt && !hasAttributes && !hasSummary && !isTechPack) return null;
+
+    return (
+        <div className="mt-4 w-full text-left bg-slate-900/60 rounded-xl p-4 text-xs text-slate-300 border border-slate-700/50 shadow-inner align-top flex-grow">
+            {hasPrompt && (
+                <div className="mb-3">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Prompt</span>
+                    <p className="line-clamp-4 italic text-slate-400">"{item.prompt}"</p>
+                </div>
+            )}
+            {hasSummary && (
+                <div className="mb-3">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Summary</span>
+                    <p className="line-clamp-4 leading-relaxed text-slate-400">{item.summary}</p>
+                </div>
+            )}
+            {hasAttributes && (
+                <div>
+                     <span className="text-[10px] text-slate-500 font-bold uppercase block mb-2">Design Attributes</span>
+                     <div className="grid grid-cols-2 gap-2">
+                        {Object.entries((item as any).designAttributes).slice(0, 4).map(([k, v]) => (
+                            <div key={k} className="bg-slate-800/80 px-2.5 py-1.5 rounded text-[10px] flex flex-col border border-slate-700/30">
+                                <span className="text-slate-500 uppercase font-semibold text-[8px] leading-tight mb-0.5">{k}</span>
+                                <span className="font-medium truncate leading-tight text-slate-200">{v as string}</span>
+                            </div>
+                        ))}
+                     </div>
+                </div>
+            )}
+            {isTechPack && (
+                <div>
+                     <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Data Model</span>
+                     <p className="text-cyan-400 font-medium">Structured Product Data</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ImageNode: React.FC<{item: GalleryItem | TechPackAsset, onClick?: () => void, isVariant?: boolean}> = ({ item, onClick, isVariant }) => {
     const prompt = 'prompt' in item ? item.prompt : '';
     
     return (
          <div
-            className={`flex flex-col items-center flex-shrink-0 text-center w-40 ${onClick ? 'cursor-pointer' : ''}`}
+            className={`flex flex-col items-center flex-shrink-0 text-center w-64 h-full ${onClick ? 'cursor-pointer group/node' : ''}`}
             onClick={onClick}
         >
-            <div className={`relative group w-40 h-52 rounded-xl overflow-hidden border-2 mb-3 transition-all shadow-lg ${onClick ? 'border-slate-700 hover:border-indigo-500 hover:scale-105' : 'border-slate-700'}`}>
+            <div className={`relative group w-64 h-72 rounded-2xl overflow-hidden border-4 mb-3 shadow-xl ${onClick ? 'border-slate-800 group-hover/node:border-indigo-500 group-hover/node:-translate-y-1 transition-all duration-300' : 'border-slate-800'}`}>
                 {isVariant && (
-                    <div className="absolute top-2 left-2 z-10 bg-indigo-600/90 backdrop-blur-sm text-[10px] font-bold text-white px-2 py-0.5 rounded text-xs">
+                    <div className="absolute top-2 left-2 z-10 bg-indigo-600/90 backdrop-blur-sm text-[10px] font-bold text-white px-2 py-0.5 rounded shadow">
                         VARIANT
                     </div>
                 )}
@@ -60,48 +106,51 @@ const ImageNode: React.FC<{item: GalleryItem | TechPackAsset, onClick?: () => vo
                     </svg>
                 </button>
             </div>
-            <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white ${tagColor[item.tag]}`}>{item.tag}</span>
+            <span className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white shadow-md ${tagColor[item.tag]}`}>{item.tag}</span>
+            <DataPanel item={item} />
         </div>
     )
 }
 
 const MoodBoardNode: React.FC<{item: MoodBoardAsset}> = ({ item }) => (
-    <div className="flex flex-col items-center flex-shrink-0 text-center w-40">
-        <div className="relative w-40 h-52 rounded-xl border-2 border-slate-700 mb-3 bg-slate-800 p-1 grid grid-cols-2 grid-rows-2 gap-1 shadow-lg overflow-hidden">
+    <div className="flex flex-col items-center flex-shrink-0 text-center w-64 h-full">
+        <div className="relative w-64 h-72 rounded-2xl border-4 border-slate-800 mb-3 bg-slate-800 p-1 grid grid-cols-2 grid-rows-2 gap-1 shadow-xl overflow-hidden shrink-0">
             {item.sources.slice(0, 4).map((source, index) => (
                 <img
                     key={index}
                     src={getDisplaySrc(source) || undefined}
-                    className="w-full h-full object-cover rounded-md"
+                    className="w-full h-full object-cover rounded-xl"
                     alt={`Mood board image ${index + 1}`}
                 />
             ))}
              {item.sources.length > 4 &&
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-white font-bold text-lg backdrop-blur-sm">
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-white font-bold text-xl backdrop-blur-sm">
                     +{item.sources.length - 4}
                 </div>
             }
         </div>
-         <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white ${tagColor[item.tag]}`}>{item.tag}</span>
+         <span className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white shadow-md ${tagColor[item.tag]}`}>{item.tag}</span>
+         <DataPanel item={item} />
     </div>
 )
 
 const MultiViewNode: React.FC<{item: MultiViewAsset, onClick?: () => void}> = ({ item, onClick }) => (
     <div
-        className={`flex flex-col items-center flex-shrink-0 text-center w-40 ${onClick ? 'cursor-pointer' : ''}`}
+        className={`flex flex-col items-center flex-shrink-0 text-center w-64 h-full ${onClick ? 'cursor-pointer group/node' : ''}`}
         onClick={onClick}
     >
-        <div className={`relative group w-40 h-52 rounded-xl border-2 mb-3 bg-slate-800 p-1 grid grid-cols-2 grid-rows-2 gap-1 shadow-lg overflow-hidden transition-all ${onClick ? 'border-slate-700 hover:border-indigo-500 hover:scale-105' : 'border-slate-700'}`}>
+        <div className={`relative group w-64 h-72 rounded-2xl border-4 mb-3 bg-slate-800 p-1 grid grid-cols-2 grid-rows-2 gap-1 shadow-xl overflow-hidden transition-all duration-300 ${onClick ? 'border-slate-800 group-hover/node:border-indigo-500 group-hover/node:-translate-y-1' : 'border-slate-800'}`}>
             {item.views.slice(0, 4).map((view, index) => (
                 <img
                     key={index}
                     src={getDisplaySrc(view.source) || undefined}
-                    className="w-full h-full object-cover rounded-md"
+                    className="w-full h-full object-cover rounded-xl"
                     alt={view.viewName}
                 />
             ))}
         </div>
-        <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white ${tagColor[item.tag]}`}>{item.tag}</span>
+        <span className={`px-3 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full text-white shadow-md ${tagColor[item.tag]}`}>{item.tag}</span>
+        <DataPanel item={item} />
     </div>
 )
 
@@ -161,7 +210,7 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
                         </button>
                     </div>
                     
-                    <div className="flex items-center justify-start space-x-6 p-6 bg-slate-900/30 rounded-xl overflow-x-auto custom-scrollbar">
+                    <div className="flex items-start justify-start space-x-6 p-6 bg-slate-900/30 rounded-xl overflow-x-auto custom-scrollbar">
                         {lineage.map((item, index) => {
                             const isVariant = index > 0 && lineage[index - 1].tag === item.tag;
                             return (
@@ -175,7 +224,7 @@ export const TraceabilityModal: React.FC<TraceabilityModalProps> = ({ startItem,
                                 )}
                                 
                                     {index < lineage.length - 1 && (
-                                        <div className="text-slate-600 flex-shrink-0">
+                                        <div className="text-slate-600 flex-shrink-0" style={{ marginTop: '128px' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                             </svg>

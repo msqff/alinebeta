@@ -1,7 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
-import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow } from '../types';
+import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow, GalleryAsset, ChatMessage } from '../types';
 
-const compressImage = (dataUrl: string, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> => {
+const compressImage = (dataUrl: string, maxWidth = 800, maxHeight = 800, quality = 0.6): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
@@ -974,4 +974,42 @@ export const generateRangeVisual = async (compositeBase64: string, stagingPrompt
         mimeType: imgData.mimeType,
         url: url
     };
+};
+
+export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAsset, history: ChatMessage[]): Promise<string> => {
+    const ai = getAI();
+    let imgSource: ImageSource | undefined = undefined;
+    if (contextAsset.tag === 'Multi-View' && contextAsset.views.length > 0) {
+        imgSource = contextAsset.views[0].source;
+    } else if ('source' in contextAsset) {
+        imgSource = contextAsset.source;
+    }
+    
+    let parts: any[] = [];
+    if (imgSource) {
+        const localImage = await getImageData(imgSource);
+        parts.push({ inlineData: { data: localImage.data, mimeType: localImage.mimeType } });
+    }
+    
+    let attributeText = "";
+    if ('designAttributes' in contextAsset && contextAsset.designAttributes) {
+        attributeText = `Design Attributes: ${JSON.stringify(contextAsset.designAttributes, null, 2)}`;
+    }
+    
+    const systemPrompt = `You are an expert fashion design assistant. You are looking at a specific garment. Answer the user's questions about this item accurately. Use the provided design attributes if available.\n${attributeText}`;
+    
+    const contents: any[] = history.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.text }]
+    }));
+    
+    parts.push({ text: prompt });
+    contents.push({ role: 'user', parts: [ { text: systemPrompt }, ...parts ] });
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: contents,
+    });
+    
+    return response.text || "I'm sorry, I couldn't generate a response.";
 };

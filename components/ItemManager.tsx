@@ -4,6 +4,7 @@ import { ItemSlot, GalleryAsset, Collection, getDisplaySrc } from '../types';
 import { generateItemSuggestions } from '../services/geminiService';
 
 import { CollectionVisualizerModal } from './CollectionVisualizerModal';
+import { DesignAssistantPanel } from './DesignAssistantPanel';
 
 interface ItemManagerProps {
     slots: ItemSlot[];
@@ -13,29 +14,41 @@ interface ItemManagerProps {
     onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
     onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string, variantId?: string) => void;
     onEnterItem: (slotId: string) => void;
+    onRenameItemSlot: (slotId: string, newName: string) => void;
     onDeleteItemSlot: (slotId: string) => void;
     onDuplicateItem?: (item: GalleryAsset) => void;
     onGenerateRangeVisual?: (base64Image: string, prompt: string) => void;
+    onShowTraceability: (item: GalleryAsset) => void;
     collection: Collection;
 }
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, collection }) => {
+const suggestionsCache: Record<string, { name: string; reasoning: string }[]> = {};
+
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onRenameItemSlot, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, onShowTraceability, collection }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
-    const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>([]);
+    const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>(suggestionsCache[collection.id] || []);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [slotToDelete, setSlotToDelete] = useState<ItemSlot | null>(null);
     const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
+    const [copilotAsset, setCopilotAsset] = useState<GalleryAsset | null>(null);
 
     // Fetch suggestions on mount or when slot count changes significantly (though we mostly want stable suggestions)
     useEffect(() => {
+        if (suggestionsCache[collection.id]) {
+            setSuggestedItems(suggestionsCache[collection.id]);
+            return; // Use cached suggestions for this session
+        }
+
         const fetchSuggestions = async () => {
             setIsLoadingSuggestions(true);
             try {
                 // Get existing names to avoid duplicates
                 const existingNames = slots.map(s => s.name);
                 const suggestions = await generateItemSuggestions(collection.name, collection.styleDna, existingNames);
-                setSuggestedItems(suggestions.slice(0, 3)); // Keep top 3
+                const topSuggestions = suggestions.slice(0, 3);
+                setSuggestedItems(topSuggestions); // Keep top 3
+                suggestionsCache[collection.id] = topSuggestions;
             } catch (e) {
                 console.error("Failed to fetch suggestions in manager", e);
             } finally {
@@ -43,11 +56,9 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
             }
         };
 
-        // Fetch if we don't have suggestions yet or if this is a fresh mount
-        if (suggestedItems.length === 0) {
-            fetchSuggestions();
-        }
-    }, []); // Only run once on mount to keep UI stable, user can refresh if they really want by re-entering
+        fetchSuggestions();
+    }, [collection.id, collection.name, collection.styleDna]); // Run when collection changes
+
 
     // Helper to find asset by ID
     const getAsset = (id?: string) => assets.find(a => a.id === id);
@@ -57,55 +68,65 @@ const ItemSlotCard: React.FC<{
     assets: GalleryAsset[];
     finalAssets: GalleryAsset[];
     onEnterItem: (id: string) => void;
+    onRenameItemSlot: (id: string, newName: string) => void;
     onDuplicateItem?: (item: GalleryAsset) => void;
     onDeleteItemSlot: (id: string) => void;
     onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
     onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string, variantId?: string) => void;
-}> = ({ slot, assets, finalAssets, onEnterItem, onDuplicateItem, onDeleteItemSlot, onSelectItem, onOpenTool }) => {
+    onOpenCopilot: (asset: GalleryAsset) => void;
+}> = ({ slot, assets, finalAssets, onEnterItem, onRenameItemSlot, onDuplicateItem, onDeleteItemSlot, onSelectItem, onOpenTool, onOpenCopilot }) => {
     const getAsset = (id?: string) => assets.find(a => a.id === id);
     const reversedFinalAssets = [...finalAssets].reverse();
     
-    // Find the latest final or draft item for this slot
-    const finalStudio = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Studio Image');
-    const finalSketch = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Sketch');
+    // Find tech pack
     const finalTechpack = reversedFinalAssets.find(a => a.itemSlotId === slot.id && a.tag === 'Tech Pack');
-
-    const sketch = finalSketch || getAsset(slot.sketchId);
-    const studio = finalStudio || getAsset(slot.studioImageId);
     const techpack = finalTechpack || getAsset(slot.techPackId);
     
-    // Priority: Studio -> Sketch
-    const initialHeroAsset = studio || sketch;
-    
     // Filter root vs children for THIS slot
-    const slotAssets = [...assets, ...finalAssets].filter(a => a.itemSlotId === slot.id && (a.tag === 'Studio Image' || a.tag === 'Sketch'));
+    const slotAssets = [...assets, ...finalAssets].filter(a => a.itemSlotId === slot.id && ['Studio Image', 'Sketch', 'Model Shot'].includes(a.tag));
     
     // Unique deduplication since items might be in both assets (ideation) and finalAssets
     const uniqueSlotAssets = Array.from(new Map(slotAssets.map(item => [item.id, item])).values());
     
-    const rootItems = uniqueSlotAssets.filter(a => !a.parentId);
-    const childItems = uniqueSlotAssets.filter(a => a.parentId);
+    // Find all Final Render Studio Images for this slot
+    const finalStudioAssets = uniqueSlotAssets.filter(a => a.tag === 'Studio Image' && finalAssets.some(fa => fa.id === a.id));
     
-    // If the initialHeroAsset is a child, its root is its parent. Otherwise, it is the root.
-    const activeRootItem = initialHeroAsset 
-        ? (initialHeroAsset.parentId ? uniqueSlotAssets.find(a => a.id === initialHeroAsset.parentId) || initialHeroAsset : initialHeroAsset)
-        : undefined;
-
-    const [activeVariantId, setActiveVariantId] = useState<string | undefined>(activeRootItem?.id);
+    // Determine the initial hero asset based on requirements
+    let initialHeroAsset: GalleryAsset | undefined = undefined;
+    if (finalStudioAssets.length > 0) {
+        // Show the most recent Final Render Studio Image
+        initialHeroAsset = finalStudioAssets[finalStudioAssets.length - 1];
+    } else if (uniqueSlotAssets.length > 0) {
+        // Show the most recent image asset created
+        initialHeroAsset = uniqueSlotAssets[uniqueSlotAssets.length - 1];
+    }
+    
+    const finalRenderStudioCount = finalStudioAssets.length;
+    
+    const [activeVariantId, setActiveVariantId] = useState<string | undefined>(initialHeroAsset?.id);
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editedName, setEditedName] = useState(slot.name);
+    
+    const handleRenameSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editedName.trim() && editedName !== slot.name) {
+            onRenameItemSlot(slot.id, editedName.trim());
+        }
+        setIsEditingName(false);
+    };
 
     // Maintain sync if initialHeroAsset changes externally
     useEffect(() => {
-        if (activeRootItem?.id) {
-             setActiveVariantId(prev => uniqueSlotAssets.find(a => a.id === prev) ? prev : activeRootItem.id);
+        if (initialHeroAsset?.id) {
+             setActiveVariantId(prev => uniqueSlotAssets.find(a => a.id === prev) ? prev : initialHeroAsset.id);
         }
-    }, [activeRootItem?.id, uniqueSlotAssets.length]);
-
-    // Gather all variants (root + children of the root)
-    const variants = activeRootItem 
-        ? [activeRootItem, ...childItems.filter(c => c.parentId === activeRootItem.id)]
-        : [];
+    }, [initialHeroAsset?.id, uniqueSlotAssets.length]);
 
     const activeAsset = uniqueSlotAssets.find(a => a.id === activeVariantId) || initialHeroAsset;
+    
+    // Show all image assets for this slot in order of creation
+    const variants = uniqueSlotAssets;
+
     const heroType = activeAsset?.tag === 'Studio Image' ? 'studio' : 'sketch';
 
     const isFinalRender = activeAsset ? finalAssets.some(a => a.id === activeAsset.id && a.tag === 'Studio Image') : false;
@@ -125,12 +146,38 @@ const ItemSlotCard: React.FC<{
     return (
         <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
             <div className="mb-3 flex justify-between items-center min-h-[28px] flex-shrink-0 relative">
-                <span 
-                    onClick={() => onEnterItem(slot.id)}
-                    className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px]"
+                {isEditingName && (
+                    <>
+                        <div className="fixed inset-0 z-[190]" onClick={() => setIsEditingName(false)} />
+                        <div className="absolute top-10 left-0 z-[200] bg-slate-900 border border-indigo-500/50 rounded-xl p-4 shadow-2xl w-64">
+                            <h3 className="text-sm font-bold text-white mb-3">Rename Item</h3>
+                            <form onSubmit={handleRenameSubmit}>
+                                <input
+                                    type="text"
+                                    value={editedName}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    className="w-full bg-slate-800 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 mb-3 text-sm"
+                                    autoFocus
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button type="button" onClick={() => setIsEditingName(false)} className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Cancel</button>
+                                    <button type="submit" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-xs font-bold">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </>
+                )}
+                
+                <button 
+                    onClick={() => {
+                        setEditedName(slot.name);
+                        setIsEditingName(true);
+                    }}
+                    className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px] text-left"
+                    title="Rename Item"
                 >
                     {slot.name}
-                </span>
+                </button>
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => onEnterItem(slot.id)}
@@ -188,6 +235,11 @@ const ItemSlotCard: React.FC<{
                         {heroLabel}
                     </div>
                 )}
+                {finalRenderStudioCount > 1 && (
+                    <div className="absolute top-2 right-2 bg-blue-500 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center shadow-md border border-slate-900 z-10" title={`${finalRenderStudioCount} Final Renders Available`}>
+                        {finalRenderStudioCount}
+                    </div>
+                )}
             </div>
 
             {/* Variants Strip */}
@@ -201,7 +253,7 @@ const ItemSlotCard: React.FC<{
                                 setActiveVariantId(variant.id);
                             }}
                             className={`flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${activeVariantId === variant.id ? 'border-indigo-500 scale-105' : 'border-slate-700 hover:border-slate-500'}`}
-                            title={variant.id === activeRootItem?.id ? "Original" : "Variant"}
+                            title={variant.tag}
                         >
                             <img src={getAssetDisplaySrc(variant)} alt="Variant thumbnail" className="w-full h-full object-cover" />
                         </button>
@@ -210,7 +262,7 @@ const ItemSlotCard: React.FC<{
             )}
 
             {/* Action Slots */}
-            <div className="grid grid-cols-3 gap-2 mt-auto w-full flex-shrink-0">
+            <div className="grid grid-cols-4 gap-2 mt-auto w-full flex-shrink-0">
                 {/* Sketch Link */}
                 <div 
                     onClick={() => activeAsset?.tag === 'Sketch' ? onSelectItem(slot.id, 'sketch') : onOpenTool('sketch', slot.id, activeAsset?.id)}
@@ -248,6 +300,15 @@ const ItemSlotCard: React.FC<{
                     ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     )}
+                </div>
+                
+                {/* Copilot Link */}
+                <div 
+                    onClick={() => activeAsset ? onOpenCopilot(activeAsset) : null}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset ? 'border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none'}`}
+                    title={activeAsset ? "Ask Design Assistant" : "Generate an asset first"}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeAsset ? 'text-amber-400' : 'text-slate-500'}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
                 </div>
             </div>
         </div>
@@ -308,10 +369,12 @@ const ItemSlotCard: React.FC<{
                              assets={assets}
                              finalAssets={finalAssets}
                              onEnterItem={onEnterItem}
+                             onRenameItemSlot={onRenameItemSlot}
                              onDuplicateItem={onDuplicateItem}
                              onDeleteItemSlot={(id) => setSlotToDelete(slots.find(s => s.id === id) || null)}
                              onSelectItem={onSelectItem}
                              onOpenTool={onOpenTool}
+                             onOpenCopilot={(asset) => setCopilotAsset(asset)}
                         />
                     ));
                 })()}
@@ -426,6 +489,19 @@ const ItemSlotCard: React.FC<{
                     finalAssets={finalAssets.filter(a => a.tag === 'Studio Image' && slots.some(s => s.id === a.itemSlotId))} 
                     onClose={() => setIsVisualizerOpen(false)} 
                     onGenerate={onGenerateRangeVisual!}
+                />
+            )}
+
+            {copilotAsset && (
+                <DesignAssistantPanel 
+                    asset={copilotAsset} 
+                    itemName={slots.find(s => s.id === copilotAsset.itemSlotId)?.name || 'Design Asset'}
+                    contextAssets={[...assets, ...finalAssets]}
+                    onClose={() => setCopilotAsset(null)} 
+                    onOpenLineage={(asset) => {
+                        setCopilotAsset(null);
+                        onShowTraceability(asset);
+                    }}
                 />
             )}
         </div>

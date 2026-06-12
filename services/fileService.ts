@@ -1,4 +1,4 @@
-import { GalleryAsset, GeneratedPattern, Collection, ItemSlot, GalleryItem, TechPackAsset, ProductReviewAsset } from '../types';
+import { GalleryAsset, GeneratedPattern, Collection, ItemSlot, GalleryItem, TechPackAsset, ProductReviewAsset, getDisplaySrc } from '../types';
 import { db } from '../firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 
@@ -32,8 +32,8 @@ const lastSavedState = new Map<string, string>();
 
 export const saveSession = async (sessionData: SessionData, userId: string): Promise<void> => {
     try {
-        const batch = writeBatch(db);
         let writeCount = 0;
+        const saveTasks: Promise<any>[] = [];
 
         const processItems = (items: any[], collectionName: string) => {
             const dbCollectionRef = collection(db, `users/${userId}/${collectionName}`);
@@ -43,8 +43,16 @@ export const saveSession = async (sessionData: SessionData, userId: string): Pro
                 const docPath = `users/${userId}/${collectionName}/${item.id}`;
                 
                 if (lastSavedState.get(docPath) !== stringified) {
-                    batch.set(doc(dbCollectionRef, item.id), sanitized);
-                    lastSavedState.set(docPath, stringified);
+                    const task = setDoc(doc(dbCollectionRef, item.id), sanitized)
+                        .then(() => {
+                            lastSavedState.set(docPath, stringified);
+                        })
+                        .catch(err => {
+                            console.error(`Failed to save document ${docPath}:`, err);
+                            // Do not update lastSavedState so it tries again next time,
+                            // or maybe it's too large and will perpetually fail. 
+                        });
+                    saveTasks.push(task);
                     writeCount++;
                 }
             }
@@ -57,20 +65,26 @@ export const saveSession = async (sessionData: SessionData, userId: string): Pro
         processItems(sessionData.itemSlots, 'itemSlots');
 
         // Process Assets
+        const stripSrc = (a: any) => {
+            const copy = { ...a };
+            delete copy.src;
+            return copy;
+        };
         const allAssets = [
-            ...sessionData.ideationGalleryItems.map(a => ({ ...a, _assetGroup: 'ideation' })),
-            ...sessionData.finalGalleryItems.map(a => ({ ...a, _assetGroup: 'final' })),
-            ...(sessionData.collectionGalleryItems || []).map(a => ({ ...a, _assetGroup: 'collection' })),
-            ...sessionData.generatedPatterns.map(a => ({ ...a, _assetGroup: 'pattern' }))
+            ...sessionData.ideationGalleryItems.map(a => ({ ...stripSrc(a), _assetGroup: 'ideation' })),
+            ...sessionData.finalGalleryItems.map(a => ({ ...stripSrc(a), _assetGroup: 'final' })),
+            ...(sessionData.collectionGalleryItems || []).map(a => ({ ...stripSrc(a), _assetGroup: 'collection' })),
+            ...sessionData.generatedPatterns.map(a => ({ ...stripSrc(a), _assetGroup: 'pattern' }))
         ];
         processItems(allAssets, 'assets');
 
-        if (writeCount > 0) {
-            await batch.commit();
-            console.log(`Saved ${writeCount} changes to Firestore.`);
+        if (saveTasks.length > 0) {
+            await Promise.allSettled(saveTasks);
+            console.log(`Attempted to save ${writeCount} changes to Firestore.`);
         }
     } catch (error) {
         console.error('Failed to save session:', error);
+        // We still throw if there is a core structural error
         throw error;
     }
 };
@@ -168,6 +182,13 @@ export const loadSession = async (userId: string): Promise<SessionData> => {
 
         if (allAssets && Array.isArray(allAssets)) {
             allAssets.forEach((asset: any) => {
+                // Restore stripped 'src' from 'source' or 'sources' array
+                if (asset.source) {
+                    asset.src = getDisplaySrc(asset.source);
+                } else if (Array.isArray(asset.sources) && asset.sources.length > 0) {
+                    asset.src = getDisplaySrc(asset.sources[0]);
+                }
+                
                 if (asset._assetGroup === 'ideation') {
                     delete asset._assetGroup;
                     data.ideationGalleryItems.push(asset as GalleryAsset);

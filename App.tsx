@@ -772,6 +772,7 @@ const App: React.FC = () => {
         const itemAlreadyInFinals = finalGalleryItems.some(i => i.id === itemToPromote.id);
         if (itemExistsInIdeation && !itemAlreadyInFinals) {
             setFinalGalleryItems(prev => [...prev, itemToPromote]);
+            setIdeationGalleryItems(prev => prev.filter(i => i.id !== itemToPromote.id));
         }
     }, [ideationGalleryItems, finalGalleryItems]);
 

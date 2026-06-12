@@ -32,6 +32,7 @@ export interface ItemSlot {
     id: string;
     collectionId: string;
     name: string;
+    created?: number;
     // The slot tracks the latest 'primary' asset for each stage to show in the manager
     sketchId?: string;
     studioImageId?: string;

@@ -152,10 +152,11 @@ const App: React.FC = () => {
         
         // Auto-create slots for selected initial items
         if (initialItems.length > 0) {
-            const newSlots: ItemSlot[] = initialItems.map(name => ({
+            const newSlots: ItemSlot[] = initialItems.map((name, index) => ({
                 id: self.crypto.randomUUID(),
                 collectionId: newCollection.id,
-                name: name
+                name: name,
+                created: Date.now() - (index * 1000)
             }));
             setItemSlots(prev => [...prev, ...newSlots]);
         }
@@ -229,7 +230,8 @@ const App: React.FC = () => {
         const newSlot: ItemSlot = {
             id: self.crypto.randomUUID(),
             collectionId: activeCollection.id,
-            name: name
+            name: name,
+            created: Date.now()
         };
         setItemSlots(prev => [...prev, newSlot]);
         // Only auto-enter if explicitly adding one manually, not when suggested items are added? 
@@ -245,6 +247,39 @@ const App: React.FC = () => {
 
     const handleRenameItemSlot = (slotId: string, newName: string) => {
         setItemSlots(prev => prev.map(s => s.id === slotId ? { ...s, name: newName } : s));
+    };
+
+    const handleReorderItemSlot = (slotId: string, direction: 'left' | 'right') => {
+        if (!activeCollection) return;
+        setItemSlots(prev => {
+            const activeSlots = prev.filter(s => s.collectionId === activeCollection.id).sort((a, b) => (b.created || 0) - (a.created || 0));
+            const otherSlots = prev.filter(s => s.collectionId !== activeCollection.id);
+            
+            const index = activeSlots.findIndex(s => s.id === slotId);
+            if (index === -1) return prev;
+
+            const newActiveSlots = [...activeSlots];
+            
+            if (direction === 'left' && index > 0) {
+                const item1 = { ...newActiveSlots[index] };
+                const item2 = { ...newActiveSlots[index - 1] };
+                const tempCreated = item1.created || Date.now();
+                item1.created = item2.created || Date.now();
+                item2.created = tempCreated;
+                newActiveSlots[index] = item1;
+                newActiveSlots[index - 1] = item2;
+            } else if (direction === 'right' && index < newActiveSlots.length - 1) {
+                const item1 = { ...newActiveSlots[index] };
+                const item2 = { ...newActiveSlots[index + 1] };
+                const tempCreated = item1.created || Date.now();
+                item1.created = item2.created || Date.now();
+                item2.created = tempCreated;
+                newActiveSlots[index] = item1;
+                newActiveSlots[index + 1] = item2;
+            }
+
+            return [...otherSlots, ...newActiveSlots];
+        });
     };
 
     const handleExitItemWorkspace = () => {
@@ -898,6 +933,7 @@ const App: React.FC = () => {
                     onGenerateRangeVisual={handleGenerateRangeVisual}
                     onShowTraceability={(item) => setTraceabilityStartItem(item)}
                     collection={activeCollection}
+                    onReorderItemSlot={handleReorderItemSlot}
                 />
             );
         }

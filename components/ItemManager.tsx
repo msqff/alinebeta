@@ -20,11 +20,12 @@ interface ItemManagerProps {
     onGenerateRangeVisual?: (base64Image: string, prompt: string) => void;
     onShowTraceability: (item: GalleryAsset) => void;
     collection: Collection;
+    onReorderItemSlot?: (slotId: string, direction: 'left' | 'right') => void;
 }
 
 const suggestionsCache: Record<string, { name: string; reasoning: string }[]> = {};
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onRenameItemSlot, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, onShowTraceability, collection }) => {
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onRenameItemSlot, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, onShowTraceability, collection, onReorderItemSlot }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>(suggestionsCache[collection.id] || []);
@@ -74,7 +75,10 @@ const ItemSlotCard: React.FC<{
     onSelectItem: (slotId: string, type: 'sketch' | 'studio' | 'techpack') => void;
     onOpenTool: (tool: 'sketch' | 'visualiser' | 'techpack', slotId: string, variantId?: string) => void;
     onOpenCopilot: (asset: GalleryAsset) => void;
-}> = ({ slot, assets, finalAssets, onEnterItem, onRenameItemSlot, onDuplicateItem, onDeleteItemSlot, onSelectItem, onOpenTool, onOpenCopilot }) => {
+    onReorderItemSlot?: (id: string, direction: 'left' | 'right') => void;
+    isFirst?: boolean;
+    isLast?: boolean;
+}> = ({ slot, assets, finalAssets, onEnterItem, onRenameItemSlot, onDuplicateItem, onDeleteItemSlot, onSelectItem, onOpenTool, onOpenCopilot, onReorderItemSlot, isFirst, isLast }) => {
     const getAsset = (id?: string) => assets.find(a => a.id === id);
     const reversedFinalAssets = [...finalAssets].reverse();
     
@@ -145,7 +149,7 @@ const ItemSlotCard: React.FC<{
 
     return (
         <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
-            <div className="mb-3 flex justify-between items-center min-h-[28px] flex-shrink-0 relative">
+            <div className="mb-3 flex flex-col gap-2 w-full relative">
                 {isEditingName && (
                     <>
                         <div className="fixed inset-0 z-[190]" onClick={() => setIsEditingName(false)} />
@@ -168,52 +172,77 @@ const ItemSlotCard: React.FC<{
                     </>
                 )}
                 
-                <button 
-                    onClick={() => {
-                        setEditedName(slot.name);
-                        setIsEditingName(true);
-                    }}
-                    className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate max-w-[150px] text-left"
-                    title="Rename Item"
-                >
-                    {slot.name}
-                </button>
-                <div className="flex items-center gap-2">
+                <div className="w-full">
                     <button 
-                        onClick={() => onEnterItem(slot.id)}
-                        className="text-xs text-indigo-400 hover:text-white font-medium flex items-center transition-colors flex-shrink-0"
+                        onClick={() => {
+                            setEditedName(slot.name);
+                            setIsEditingName(true);
+                        }}
+                        className="font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate w-full text-left"
+                        title="Rename Item"
                     >
-                        Open
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                        {slot.name}
                     </button>
-                    {activeAsset && onDuplicateItem && (
+                </div>
+                
+                <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center gap-1">
+                        {onReorderItemSlot && (
+                            <>
+                                <button 
+                                    onClick={() => onReorderItemSlot(slot.id, 'left')} 
+                                    disabled={isFirst}
+                                    className={`p-1 rounded-md transition-colors ${isFirst ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                <button 
+                                    onClick={() => onReorderItemSlot(slot.id, 'right')} 
+                                    disabled={isLast}
+                                    className={`p-1 rounded-md transition-colors ${isLast ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => onEnterItem(slot.id)}
+                            className="text-xs text-indigo-400 hover:text-white font-medium flex items-center transition-colors flex-shrink-0"
+                        >
+                            Open
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        {activeAsset && onDuplicateItem && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDuplicateItem(activeAsset);
+                                }}
+                                className="text-blue-400 hover:text-blue-300 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
+                                title="Duplicate Hero Asset"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                </svg>
+                            </button>
+                        )}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onDuplicateItem(activeAsset);
+                                onDeleteItemSlot(slot.id);
                             }}
-                            className="text-blue-400 hover:text-blue-300 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
-                            title="Duplicate Hero Asset"
+                            className="text-slate-500 hover:text-red-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
+                            title="Delete Item Slot"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                         </button>
-                    )}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteItemSlot(slot.id);
-                        }}
-                        className="text-slate-500 hover:text-red-400 transition-colors bg-slate-800/50 hover:bg-slate-800 rounded-full p-1.5"
-                        title="Delete Item Slot"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -362,7 +391,8 @@ const ItemSlotCard: React.FC<{
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar pb-20 items-stretch">
                 {(() => {
-                    return slots.map((slot) => (
+                    const sortedSlots = [...slots].sort((a, b) => (b.created || 0) - (a.created || 0));
+                    return sortedSlots.map((slot, index) => (
                         <ItemSlotCard 
                              key={slot.id}
                              slot={slot}
@@ -375,6 +405,9 @@ const ItemSlotCard: React.FC<{
                              onSelectItem={onSelectItem}
                              onOpenTool={onOpenTool}
                              onOpenCopilot={(asset) => setCopilotAsset(asset)}
+                             onReorderItemSlot={onReorderItemSlot}
+                             isFirst={index === 0}
+                             isLast={index === sortedSlots.length - 1}
                         />
                     ));
                 })()}

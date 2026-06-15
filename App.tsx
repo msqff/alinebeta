@@ -263,17 +263,25 @@ const App: React.FC = () => {
             if (direction === 'left' && index > 0) {
                 const item1 = { ...newActiveSlots[index] };
                 const item2 = { ...newActiveSlots[index - 1] };
-                const tempCreated = item1.created || Date.now();
-                item1.created = item2.created || Date.now();
-                item2.created = tempCreated;
+                let tempCreated1 = item1.created || Date.now();
+                let tempCreated2 = item2.created || Date.now();
+                if (tempCreated1 === tempCreated2) {
+                    tempCreated1 += 1;
+                }
+                item1.created = tempCreated2;
+                item2.created = tempCreated1;
                 newActiveSlots[index] = item1;
                 newActiveSlots[index - 1] = item2;
             } else if (direction === 'right' && index < newActiveSlots.length - 1) {
                 const item1 = { ...newActiveSlots[index] };
                 const item2 = { ...newActiveSlots[index + 1] };
-                const tempCreated = item1.created || Date.now();
-                item1.created = item2.created || Date.now();
-                item2.created = tempCreated;
+                let tempCreated1 = item1.created || Date.now();
+                let tempCreated2 = item2.created || Date.now();
+                if (tempCreated1 === tempCreated2) {
+                    tempCreated1 += 1;
+                }
+                item1.created = tempCreated2;
+                item2.created = tempCreated1;
                 newActiveSlots[index] = item1;
                 newActiveSlots[index + 1] = item2;
             }

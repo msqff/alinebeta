@@ -1003,7 +1003,7 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
         attributeText = `Tech Pack Data: ${JSON.stringify((contextAsset as any).data, null, 2)}`;
     }
     
-    const systemPrompt = `You are an expert fashion design assistant. You are looking at a specific garment. Answer the user's questions about this item accurately. Use the provided design attributes if available.\n${attributeText}`;
+    const systemPrompt = `You are an expert fashion design assistant. You are looking at a specific garment. Answer the user's questions about this item accurately. Use the provided design attributes if available.\n${attributeText}\nCRITICAL BEHAVIORAL RULE: You have access to a tool called generate_image_tweak. If the user asks to generate an image, visualize a change, or change the color/style of the item, you MUST call the generate_image_tweak tool. You are STRICTLY FORBIDDEN from generating ASCII art, text-based mockups, or purely conceptual descriptions of visual changes. You must execute the tool.`;
     
     const contents: any[] = history.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
@@ -1015,7 +1015,7 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
     
     const generate_image_tweak_tool = {
         name: "generate_image_tweak",
-        description: "Generates a modified visual version of the current garment item.",
+        description: "Triggers the backend image generation model. Use this whenever the user wants to see a visual change or new image.",
         parameters: {
             type: "object",
             properties: {

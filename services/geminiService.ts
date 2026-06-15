@@ -981,7 +981,7 @@ export const generateRangeVisual = async (compositeBase64: string, stagingPrompt
     };
 };
 
-export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAsset, history: ChatMessage[]): Promise<string> => {
+export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAsset, history: ChatMessage[]): Promise<ChatMessage> => {
     const ai = getAI();
     let imgSource: ImageSource | undefined = undefined;
     if (contextAsset.tag === 'Multi-View' && contextAsset.views.length > 0) {
@@ -999,22 +999,90 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
     let attributeText = "";
     if ('designAttributes' in contextAsset && contextAsset.designAttributes) {
         attributeText = `Design Attributes: ${JSON.stringify(contextAsset.designAttributes, null, 2)}`;
+    } else if (contextAsset.tag === 'Tech Pack') {
+        attributeText = `Tech Pack Data: ${JSON.stringify((contextAsset as any).data, null, 2)}`;
     }
     
     const systemPrompt = `You are an expert fashion design assistant. You are looking at a specific garment. Answer the user's questions about this item accurately. Use the provided design attributes if available.\n${attributeText}`;
     
     const contents: any[] = history.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.text }]
+        parts: [{ text: msg.text || "" }]
     }));
     
     parts.push({ text: prompt });
     contents.push({ role: 'user', parts: [ { text: systemPrompt }, ...parts ] });
     
+    const generate_image_tweak_tool = {
+        name: "generate_image_tweak",
+        description: "Generates a modified visual version of the current garment item.",
+        parameters: {
+            type: "object",
+            properties: {
+                prompt_tweak: {
+                    type: "string",
+                    description: "The prompt to use for generating the image"
+                }
+            },
+            required: ["prompt_tweak"]
+        }
+    };
+    
+    const propose_tech_pack_update_tool = {
+        name: "propose_tech_pack_update",
+        description: "Proposes changes to the data or tech pack of the garment based on user request. Only call this when the user explicitly requests to apply data changes to the tech pack or item attributes.",
+        parameters: {
+            type: "object",
+            properties: {
+                proposed_json: {
+                    type: "object",
+                    description: "JSON object representing changes to apply",
+                    additionalProperties: true
+                }
+            },
+            required: ["proposed_json"]
+        }
+    };
+
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: contents,
+        tools: [{
+            functionDeclarations: [generate_image_tweak_tool, propose_tech_pack_update_tool as any]
+        }]
     });
     
-    return response.text || "I'm sorry, I couldn't generate a response.";
+    const fnCall = response.functionCalls?.[0];
+    if (fnCall) {
+        if (fnCall.name === 'generate_image_tweak') {
+            const tweakArgs = fnCall.args as any;
+            if (!imgSource) {
+                return { role: 'assistant', type: 'text', text: "I cannot tweak this image as the source is missing." };
+            }
+            const generatedImages = await tweakStudioImage(imgSource, tweakArgs.prompt_tweak, undefined, 1);
+            if (generatedImages.length > 0) {
+                return {
+                    role: 'assistant',
+                    type: 'image_generation',
+                    imageUrl: generatedImages[0].url || generatedImages[0].data, // Could be base64 data if url doesn't exist
+                    text: "Here is the visual tweak you requested."
+                };
+            }
+        } else if (fnCall.name === 'propose_tech_pack_update') {
+            const tweakArgs = fnCall.args as any;
+            return {
+                role: 'assistant',
+                type: 'tech_pack_proposal',
+                proposedData: tweakArgs.proposed_json,
+                text: "I have drafted the data changes.",
+                actionState: 'pending'
+            };
+        }
+    }
+    
+    return {
+        role: 'assistant',
+        type: 'text',
+        text: response.text || "I'm sorry, I couldn't generate a response."
+    };
 };

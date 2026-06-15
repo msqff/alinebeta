@@ -21,11 +21,13 @@ interface ItemManagerProps {
     onShowTraceability: (item: GalleryAsset) => void;
     collection: Collection;
     onReorderItemSlot?: (slotId: string, direction: 'left' | 'right') => void;
+    onSaveCopilotAsset: (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string) => Promise<void>;
+    onApplyCopilotTechPack: (itemId: string, newAttributes: any) => void;
 }
 
 const suggestionsCache: Record<string, { name: string; reasoning: string }[]> = {};
 
-export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onRenameItemSlot, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, onShowTraceability, collection, onReorderItemSlot }) => {
+export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAssets, onAddItem, onSelectItem, onOpenTool, onEnterItem, onRenameItemSlot, onDeleteItemSlot, onDuplicateItem, onGenerateRangeVisual, onShowTraceability, collection, onReorderItemSlot, onSaveCopilotAsset, onApplyCopilotTechPack }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [suggestedItems, setSuggestedItems] = useState<{ name: string; reasoning: string }[]>(suggestionsCache[collection.id] || []);
@@ -544,6 +546,8 @@ const ItemSlotCard: React.FC<{
                         setCopilotAsset(null);
                         onShowTraceability(asset);
                     }}
+                    onSaveCopilotAsset={onSaveCopilotAsset}
+                    onApplyCopilotTechPack={onApplyCopilotTechPack}
                 />
             )}
         </div>

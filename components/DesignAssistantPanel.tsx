@@ -10,9 +10,11 @@ interface DesignAssistantPanelProps {
     contextAssets?: GalleryAsset[];
     onClose: () => void;
     onOpenLineage: (asset: GalleryAsset) => void;
+    onSaveCopilotAsset: (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string) => Promise<void>;
+    onApplyCopilotTechPack: (itemId: string, newAttributes: any) => void;
 }
 
-export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asset, itemName, contextAssets, onClose, onOpenLineage }) => {
+export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asset, itemName, contextAssets, onClose, onOpenLineage, onSaveCopilotAsset, onApplyCopilotTechPack }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isThinking, setIsThinking] = useState(false);
@@ -72,9 +74,9 @@ export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asse
 
         try {
             const aiResponse = await sendCopilotMessage(promptContextString, asset, messages);
-            setMessages(prev => [...prev, { role: 'assistant', text: aiResponse }]);
+            setMessages(prev => [...prev, aiResponse]);
         } catch (error: any) {
-            setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, I encountered an error: ${error.message}` }]);
+            setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, I encountered an error: ${error.message}`, type: 'text' }]);
         } finally {
             setIsThinking(false);
         }
@@ -171,8 +173,74 @@ export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asse
                     )}
                     {messages.map((m, i) => (
                         <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] p-3 rounded-2xl ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'} whitespace-pre-wrap text-sm`}>
-                                {m.text}
+                            <div className={`max-w-[90%] flex flex-col gap-2`}>
+                                {m.text && (
+                                    <div className={`p-3 rounded-2xl ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'} whitespace-pre-wrap text-sm inline-block self-${m.role === 'user' ? 'end' : 'start'}`}>
+                                        {m.text}
+                                    </div>
+                                )}
+                                
+                                {m.type === 'image_generation' && m.imageUrl && (
+                                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-2 flex flex-col gap-2">
+                                        <img src={m.imageUrl} alt="Generated Tweak" className="w-full rounded-lg object-contain bg-slate-900 border border-slate-700 max-h-48" />
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={async () => {
+                                                    setMessages(prev => {
+                                                        const newMsg = [...prev];
+                                                        if (newMsg[i]) newMsg[i].actionState = 'applied';
+                                                        return newMsg;
+                                                    });
+                                                    await onSaveCopilotAsset(m.imageUrl!, 'ideation', 'Studio Image', asset.id);
+                                                }}
+                                                disabled={m.actionState === 'applied'}
+                                                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${m.actionState === 'applied' ? 'bg-indigo-600/50 text-white/50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+                                            >
+                                                {m.actionState === 'applied' ? 'Saved ✓' : 'Save to Ideation'}
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    setMessages(prev => {
+                                                        const newMsg = [...prev];
+                                                        if (newMsg[i]) newMsg[i].actionState = 'applied';
+                                                        return newMsg;
+                                                    });
+                                                    await onSaveCopilotAsset(m.imageUrl!, 'final', 'Studio Image', asset.id);
+                                                }}
+                                                disabled={m.actionState === 'applied'}
+                                                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors border ${m.actionState === 'applied' ? 'border-slate-600 text-slate-500 cursor-not-allowed' : 'border-indigo-500 text-indigo-400 hover:bg-indigo-900/30'}`}
+                                            >
+                                                {m.actionState === 'applied' ? 'Saved ✓' : 'Save to Finals'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {m.type === 'tech_pack_proposal' && m.proposedData && (
+                                    <div className="bg-slate-800/80 border border-indigo-500/30 rounded-xl p-3 flex flex-col gap-3">
+                                        <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs uppercase tracking-wider mb-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                            Proposed Data Changes
+                                        </div>
+                                        <div className="bg-slate-950/50 rounded p-2 text-xs text-slate-300 font-mono overflow-auto max-h-32 custom-scrollbar">
+                                            <pre>{JSON.stringify(m.proposedData, null, 2)}</pre>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                onApplyCopilotTechPack(asset.id, m.proposedData);
+                                                setMessages(prev => {
+                                                    const newMsg = [...prev];
+                                                    if (newMsg[i]) newMsg[i].actionState = 'applied';
+                                                    return newMsg;
+                                                });
+                                            }}
+                                            disabled={m.actionState === 'applied'}
+                                            className={`w-full py-2 text-sm font-bold rounded-lg transition-colors ${m.actionState === 'applied' ? 'bg-amber-600/50 text-white/50 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-500 text-white'}`}
+                                        >
+                                            {m.actionState === 'applied' ? 'Applied ✓' : 'Apply Changes to Item'}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

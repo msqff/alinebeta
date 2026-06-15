@@ -1,5 +1,12 @@
 
-export interface ChatMessage { role: 'user' | 'assistant'; text: string; }
+export interface ChatMessage {
+    role: 'user' | 'assistant';
+    type: 'text' | 'image_generation' | 'tech_pack_proposal';
+    text?: string;
+    imageUrl?: string;
+    proposedData?: any;
+    actionState?: 'pending' | 'applied';
+}
 
 export type Tool = 'sketch' | 'visualiser' | 'multiview' | 'model' | 'sketchEditor' | 'moodboard' | 'studioImageEditor' | 'techpack' | 'review' | 'shopperPulse';
 

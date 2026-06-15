@@ -290,8 +290,68 @@ const App: React.FC = () => {
         });
     };
 
+    const handleSaveCopilotAsset = async (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string) => {
+        try {
+            const isDataUrl = imageUrl.startsWith('data:');
+            let dataUrl = imageUrl;
+            let mimeType = 'image/png';
+            
+            if (!isDataUrl) {
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                mimeType = blob.type;
+                const file = new File([blob], `copilot_${type.toLowerCase().replace(' ', '_')}.png`, { type: mimeType });
+                
+                const reader = new FileReader();
+                dataUrl = await new Promise((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                 const match = imageUrl.match(/^data:([^;]+);base64,/);
+                 if (match) {
+                     mimeType = match[1];
+                 }
+            }
+            
+            const newAsset: GalleryItem = {
+                id: self.crypto.randomUUID(),
+                tag: type,
+                source: { type: 'file', data: dataUrl, mimeType },
+                src: dataUrl,
+                parentId: parentId,
+                collectionId: activeCollection?.id,
+                itemSlotId: activeSlotId || undefined
+            };
+            
+            if (gallery === 'ideation') {
+                setIdeationGalleryItems(prev => [...prev, newAsset]);
+            } else {
+                setFinalGalleryItems(prev => [...prev, newAsset]);
+            }
+        } catch (error) {
+            console.error("Failed to save copilot asset", error);
+        }
+    };
+    
+    const handleApplyCopilotTechPack = (itemId: string, newAttributes: any) => {
+        const updater = (prev: GalleryAsset[]) => prev.map(item => {
+            if (item.id === itemId) {
+                if (item.tag === 'Tech Pack') {
+                    const techItem = item as TechPackAsset;
+                    return { ...techItem, data: Array.isArray(newAttributes) ? newAttributes : techItem.data };
+                } else if ('designAttributes' in item) {
+                    return { ...item, designAttributes: { ...(item as GalleryItem).designAttributes, ...newAttributes } };
+                }
+            }
+            return item;
+        });
+        setIdeationGalleryItems(updater as any);
+        setFinalGalleryItems(updater as any);
+    };
+
     const handleExitItemWorkspace = () => {
-        setActiveSlotId(null);
         setActiveTool(null);
         setSelectedImageForTool(null);
     };
@@ -942,6 +1002,8 @@ const App: React.FC = () => {
                     onShowTraceability={(item) => setTraceabilityStartItem(item)}
                     collection={activeCollection}
                     onReorderItemSlot={handleReorderItemSlot}
+                    onSaveCopilotAsset={handleSaveCopilotAsset}
+                    onApplyCopilotTechPack={handleApplyCopilotTechPack}
                 />
             );
         }

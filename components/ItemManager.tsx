@@ -21,7 +21,7 @@ interface ItemManagerProps {
     onShowTraceability: (item: GalleryAsset) => void;
     collection: Collection;
     onReorderItemSlot?: (slotId: string, direction: 'left' | 'right') => void;
-    onSaveCopilotAsset: (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string) => Promise<void>;
+    onSaveCopilotAsset: (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string, prompt?: string, designAttributes?: Record<string, string>) => Promise<void>;
     onApplyCopilotTechPack: (itemId: string, newAttributes: any) => void;
 }
 

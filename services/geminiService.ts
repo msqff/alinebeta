@@ -1021,7 +1021,7 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
             properties: {
                 prompt_tweak: {
                     type: "string",
-                    description: "The prompt to use for generating the image"
+                    description: "The prompt to use for generating the image. IMPORTANT: Explicitly include instructions in this prompt to maintain the original background and lighting of the image, e.g. 'keep the same background'."
                 }
             },
             required: ["prompt_tweak"]
@@ -1047,15 +1047,24 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: contents,
-        tools: [{
-            functionDeclarations: [generate_image_tweak_tool, propose_tech_pack_update_tool as any]
-        }]
+        config: {
+            tools: [{
+                functionDeclarations: [generate_image_tweak_tool, propose_tech_pack_update_tool as any]
+            }]
+        }
     });
     
-    const fnCall = response.functionCalls?.[0];
+    let fnCall = response.functionCalls?.[0];
+    if (!fnCall) {
+        const candidate = response.candidates?.[0];
+        const callPart = candidate?.content?.parts?.find(part => part.functionCall);
+        if (callPart) {
+            fnCall = callPart.functionCall;
+        }
+    }
     if (fnCall) {
         if (fnCall.name === 'generate_image_tweak') {
-            const tweakArgs = fnCall.args as any;
+            const tweakArgs = typeof fnCall.args === 'string' ? JSON.parse(fnCall.args) : (fnCall.args || {});
             if (!imgSource) {
                 return { role: 'assistant', type: 'text', text: "I cannot tweak this image as the source is missing." };
             }
@@ -1064,12 +1073,13 @@ export const sendCopilotMessage = async (prompt: string, contextAsset: GalleryAs
                 return {
                     role: 'assistant',
                     type: 'image_generation',
-                    imageUrl: generatedImages[0].url || generatedImages[0].data, // Could be base64 data if url doesn't exist
-                    text: "Here is the visual tweak you requested."
+                    imageUrl: generatedImages[0].url || generatedImages[0].data,
+                    text: "Here is the visual tweak you requested.",
+                    generationPrompt: tweakArgs.prompt_tweak
                 };
             }
         } else if (fnCall.name === 'propose_tech_pack_update') {
-            const tweakArgs = fnCall.args as any;
+            const tweakArgs = typeof fnCall.args === 'string' ? JSON.parse(fnCall.args) : (fnCall.args || {});
             return {
                 role: 'assistant',
                 type: 'tech_pack_proposal',

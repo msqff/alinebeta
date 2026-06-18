@@ -6,6 +6,7 @@ export interface ChatMessage {
     imageUrl?: string;
     proposedData?: any;
     actionState?: 'pending' | 'applied';
+    generationPrompt?: string;
 }
 
 export type Tool = 'sketch' | 'visualiser' | 'multiview' | 'model' | 'sketchEditor' | 'moodboard' | 'studioImageEditor' | 'techpack' | 'review' | 'shopperPulse';

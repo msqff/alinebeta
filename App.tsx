@@ -290,39 +290,37 @@ const App: React.FC = () => {
         });
     };
 
-    const handleSaveCopilotAsset = async (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string) => {
+    const handleSaveCopilotAsset = async (imageUrl: string, gallery: 'ideation' | 'final', type: 'Sketch' | 'Studio Image', parentId: string, prompt?: string, designAttributes?: Record<string, string>) => {
         try {
             const isDataUrl = imageUrl.startsWith('data:');
-            let dataUrl = imageUrl;
-            let mimeType = 'image/png';
+            let sourceToSave: ImageSource = {};
+            let displaySrc = imageUrl;
             
             if (!isDataUrl) {
-                const response = await fetch(imageUrl);
-                const blob = await response.blob();
-                mimeType = blob.type;
-                const file = new File([blob], `copilot_${type.toLowerCase().replace(' ', '_')}.png`, { type: mimeType });
-                
-                const reader = new FileReader();
-                dataUrl = await new Promise((resolve, reject) => {
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+                sourceToSave = { url: imageUrl };
             } else {
-                 const match = imageUrl.match(/^data:([^;]+);base64,/);
+                 const match = imageUrl.match(/^data:([^;]+);base64,(.*)$/);
                  if (match) {
-                     mimeType = match[1];
+                     sourceToSave = { mimeType: match[1], data: match[2] };
+                 } else {
+                     sourceToSave = { url: imageUrl };
                  }
             }
+            
+            const parentAsset = [...ideationGalleryItems, ...finalGalleryItems].find(a => a.id === parentId);
+            const itemSlotId = parentAsset?.itemSlotId || activeSlotId || undefined;
+            const finalPrompt = prompt || ('prompt' in (parentAsset || {}) ? (parentAsset as GalleryItem).prompt : undefined) || "Copilot generation";
             
             const newAsset: GalleryItem = {
                 id: self.crypto.randomUUID(),
                 tag: type,
-                source: { type: 'file', data: dataUrl, mimeType },
-                src: dataUrl,
+                source: sourceToSave,
+                src: displaySrc,
                 parentId: parentId,
                 collectionId: activeCollection?.id,
-                itemSlotId: activeSlotId || undefined
+                itemSlotId: itemSlotId,
+                designAttributes: designAttributes || ('designAttributes' in (parentAsset || {}) ? (parentAsset as GalleryItem).designAttributes : undefined),
+                prompt: finalPrompt
             };
             
             if (gallery === 'ideation') {
@@ -352,6 +350,7 @@ const App: React.FC = () => {
     };
 
     const handleExitItemWorkspace = () => {
+        setActiveSlotId(null);
         setActiveTool(null);
         setSelectedImageForTool(null);
     };

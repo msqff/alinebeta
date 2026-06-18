@@ -191,7 +191,7 @@ export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asse
                                                         if (newMsg[i]) newMsg[i].actionState = 'applied';
                                                         return newMsg;
                                                     });
-                                                    await onSaveCopilotAsset(m.imageUrl!, 'ideation', 'Studio Image', asset.id);
+                                                    await onSaveCopilotAsset(m.imageUrl!, 'ideation', 'Studio Image', asset.id, m.generationPrompt, 'designAttributes' in asset ? asset.designAttributes : undefined);
                                                 }}
                                                 disabled={m.actionState === 'applied'}
                                                 className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${m.actionState === 'applied' ? 'bg-indigo-600/50 text-white/50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
@@ -205,7 +205,7 @@ export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asse
                                                         if (newMsg[i]) newMsg[i].actionState = 'applied';
                                                         return newMsg;
                                                     });
-                                                    await onSaveCopilotAsset(m.imageUrl!, 'final', 'Studio Image', asset.id);
+                                                    await onSaveCopilotAsset(m.imageUrl!, 'final', 'Studio Image', asset.id, m.generationPrompt, 'designAttributes' in asset ? asset.designAttributes : undefined);
                                                 }}
                                                 disabled={m.actionState === 'applied'}
                                                 className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors border ${m.actionState === 'applied' ? 'border-slate-600 text-slate-500 cursor-not-allowed' : 'border-indigo-500 text-indigo-400 hover:bg-indigo-900/30'}`}

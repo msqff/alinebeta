@@ -59,7 +59,7 @@ export const DesignAssistantPanel: React.FC<DesignAssistantPanelProps> = ({ asse
     const handleSend = async () => {
         if (!inputValue.trim() || isThinking) return;
 
-        const userMessage: ChatMessage = { role: 'user', text: inputValue };
+        const userMessage: ChatMessage = { role: 'user', text: inputValue, type: 'text' };
         setMessages(prev => [...prev, userMessage]);
         
         let promptContextString = inputValue;

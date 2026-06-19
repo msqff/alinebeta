@@ -512,7 +512,7 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
     return Promise.all(imagePromises);
 };
 
-export const placeOnModel = async (productImage: ImageSource, prompt: string): Promise<ImageSource[]> => {
+export const placeOnModel = async (productImage: ImageSource, prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
     const localProduct = await getImageData(productImage);
     const textPrompt = `Realistically place the garment from the provided image onto a photorealistic model. The model's pose and camera angle should be: "${prompt}". The background should be a simple studio or neutral setting. The final image should be a full-body shot. Ensure the garment's draping, folds, and fit look natural for the specified pose and the lighting on the model and garment is consistent. Please provide a distinct visual variation.`;
@@ -533,7 +533,7 @@ export const placeOnModel = async (productImage: ImageSource, prompt: string): P
         return { url };
     };
 
-    const imagePromises = Array(4).fill(null).map(() => generateSingleImage());
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
     return Promise.all(imagePromises);
 };
 

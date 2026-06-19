@@ -4,7 +4,7 @@ import { FileUpload } from './common/FileUpload';
 import { fileToBase64 } from '../services/geminiService';
 
 interface ModelPlacementProps {
-    onPlace: (productImage: ImageSource, prompt: string) => void;
+    onPlace: (productImage: ImageSource, prompt: string, imageCount: number) => void;
     onBack: () => void;
     inputImage: GalleryItem | null;
 }
@@ -13,6 +13,7 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
     const [prompt, setPrompt] = useState('');
     const [productImage, setProductImage] = useState<ImageSource | null>(inputImage?.source || null);
     const [productImagePreview, setProductImagePreview] = useState<string | null>(inputImage?.src || null);
+    const [imageCount, setImageCount] = useState<number>(1);
 
     useEffect(() => {
         if (inputImage) {
@@ -30,7 +31,7 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (prompt.trim() && productImage) {
-            onPlace(productImage, prompt);
+            onPlace(productImage, prompt, imageCount);
         }
     };
 
@@ -67,7 +68,7 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
 
                 <div className="flex flex-col bg-slate-950/40 p-6 rounded-2xl border border-white/5 shadow-inner">
                     <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-slate-400 flex items-center"><span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-xs flex items-center justify-center mr-3 border border-indigo-500/30">2</span> Scene & Model</h3>
-                     <div className="relative group flex-grow mb-6">
+                    <div className="relative group flex-grow mb-6">
                         <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl opacity-10 group-focus-within:opacity-50 transition duration-500 blur"></div>
                         <textarea
                             value={prompt}
@@ -75,6 +76,20 @@ export const ModelPlacement: React.FC<ModelPlacementProps> = ({ onPlace, onBack,
                             placeholder="Describe the model and the setting (e.g., A diverse female model walking confidently on a Paris street, sunlit, shallow depth of field)..."
                             className="relative w-full h-full p-6 bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none transition-all text-white text-lg placeholder-slate-600 resize-none leading-relaxed"
                         />
+                    </div>
+                    <div className="flex items-center justify-between w-full mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                        <label htmlFor="imageCount" className="text-xs font-bold uppercase text-slate-500 mr-4 whitespace-nowrap">Variations to Generate</label>
+                        <input
+                            id="imageCount"
+                            type="range"
+                            min="1"
+                            max="4"
+                            step="1"
+                            value={imageCount}
+                            onChange={(e) => setImageCount(Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        />
+                        <span className="ml-4 text-white font-mono text-sm w-8 text-right">{imageCount}</span>
                     </div>
                     <button
                         type="submit"

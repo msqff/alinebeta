@@ -26,6 +26,7 @@ import { AuditWarningModal } from './components/AuditWarningModal';
 import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
+import { ImageLightbox } from './components/ImageLightbox';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData, deleteCollectionFromDb, deleteItemSlotFromDb, deleteAssetFromDb } from './services/fileService';
 import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, TechPackItem, getDisplaySrc } from './types';
@@ -63,6 +64,7 @@ const App: React.FC = () => {
     const [viewingTechPack, setViewingTechPack] = useState<TechPackAsset | null>(null);
     const [viewingReview, setViewingReview] = useState<ProductReviewAsset | null>(null);
     const [viewingMultiView, setViewingMultiView] = useState<MultiViewAsset | null>(null);
+    const [viewingLightboxItem, setViewingLightboxItem] = useState<GalleryAsset | null>(null);
     
     const [itemPendingTechPack, setItemPendingTechPack] = useState<GalleryItem | null>(null);
     const [itemPendingAudit, setItemPendingAudit] = useState<GalleryItem | null>(null);
@@ -621,12 +623,12 @@ const App: React.FC = () => {
         }
     };
     
-    const handlePlaceOnModel = async (productImage: ImageSource, prompt: string) => {
+    const handlePlaceOnModel = async (productImage: ImageSource, prompt: string, imageCount: number = 4) => {
         setIsLoading(true);
         setLoadingMessage('Generating model shots...');
         setError(null);
         try {
-            const newImageSources = await placeOnModel(productImage, prompt);
+            const newImageSources = await placeOnModel(productImage, prompt, imageCount);
             const newItems = addItemsToFinalGallery(newImageSources, 'Model Shot', prompt, selectedImageForTool?.id);
             // Don't auto-select new item, go back to menu to see results in context if slot is active
             if(activeSlotId) handleBackToMenu();
@@ -712,6 +714,7 @@ const App: React.FC = () => {
         if (item.tag === 'Tech Pack') { setViewingTechPack(item as TechPackAsset); return; }
         if (item.tag === 'Product Review') { setViewingReview(item as ProductReviewAsset); return; }
         if (item.tag === 'Multi-View') { setViewingMultiView(item as MultiViewAsset); return; }
+        if (item.tag === 'Model Shot') { setViewingLightboxItem(item); return; }
 
         if (item.tag === 'Studio Image' && galleryType === 'ideation' && !activeTool) { handleEditItem(item as GalleryItem); return; }
 
@@ -1103,6 +1106,16 @@ const App: React.FC = () => {
             {viewingTechPack && <TechPackModal techPack={viewingTechPack} onClose={() => setViewingTechPack(null)} onSaveChanges={(newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData) => handleUpdateTechPackContent(viewingTechPack.id, newData, newSizingData, newCostingData, newPlacementData, newBomData, newDppData)} />}
             {viewingReview && <ProductReviewModal asset={viewingReview} onClose={() => setViewingReview(null)} onNavigateToVisualizer={handleNavigateToVisualizer} />}
             {viewingMultiView && <MultiViewModal asset={viewingMultiView} onClose={() => setViewingMultiView(null)} />}
+            {viewingLightboxItem && (() => {
+                const parentAsset = viewingLightboxItem.parentId ? [...ideationGalleryItems, ...finalGalleryItems, ...collectionGalleryItems].find(a => a.id === viewingLightboxItem.parentId) : null;
+                return (
+                    <ImageLightbox 
+                        currentAsset={viewingLightboxItem}
+                        parentAsset={parentAsset || null}
+                        onClose={() => setViewingLightboxItem(null)} 
+                    />
+                );
+            })()}
             
             <Header 
                 onShowPatterns={() => setIsPatternModalOpen(true)}

@@ -10,6 +10,7 @@ interface HeaderProps {
     activeItemName?: string;
     onExitItem?: () => void;
     onShowPromptLibrary: () => void;
+    onShowDataViewer: () => void;
     onSignOut: () => void;
 }
 
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
     activeItemName,
     onExitItem,
     onShowPromptLibrary,
+    onShowDataViewer,
     onSignOut
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -141,6 +143,15 @@ export const Header: React.FC<HeaderProps> = ({
                                     className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors border-b border-white/5"
                                 >
                                     Prompt Library
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        onShowDataViewer();
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors border-b border-white/5"
+                                >
+                                    Data Viewer
                                 </button>
                                 {hasGeneratedPatterns && (
                                     <button 

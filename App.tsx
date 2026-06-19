@@ -27,6 +27,7 @@ import { ShopperPulseModal } from './components/ShopperPulseModal';
 import { FullscreenGalleryModal } from './components/FullscreenGalleryModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
 import { ImageLightbox } from './components/ImageLightbox';
+import { DataViewerModal } from './components/DataViewerModal';
 import { generateSketches, visualiseProduct, placeOnModel, tweakSketch, generatePattern, generateTechPack, tweakStudioImage, generateProductReview, generateMultiViews, fileToBase64 } from './services/geminiService';
 import { saveSession, loadSession, SessionData, deleteCollectionFromDb, deleteItemSlotFromDb, deleteAssetFromDb } from './services/fileService';
 import { Tool, GalleryItem, ImageSource, GeneratedPattern, GalleryAsset, MoodBoardAsset, TechPackAsset, TechPackSection, ProductReviewResult, ProductReviewAsset, MultiViewAsset, Collection, ItemSlot, SizingRow, CostingRow, PlacementPin, BOMRow, TechPackItem, getDisplaySrc } from './types';
@@ -60,6 +61,7 @@ const App: React.FC = () => {
     const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] = useState(false);
     const [isGalleryFullscreen, setIsGalleryFullscreen] = useState(false);
     const [isPromptLibraryOpen, setIsPromptLibraryOpen] = useState(false);
+    const [isDataViewerOpen, setIsDataViewerOpen] = useState(false);
     
     const [viewingTechPack, setViewingTechPack] = useState<TechPackAsset | null>(null);
     const [viewingReview, setViewingReview] = useState<ProductReviewAsset | null>(null);
@@ -1096,6 +1098,16 @@ const App: React.FC = () => {
             )}
             
             {/* Modals */}
+            {isDataViewerOpen && (
+                <DataViewerModal 
+                    collections={collections}
+                    itemSlots={itemSlots}
+                    ideationGalleryItems={ideationGalleryItems}
+                    finalGalleryItems={finalGalleryItems}
+                    collectionGalleryItems={collectionGalleryItems}
+                    onClose={() => setIsDataViewerOpen(false)}
+                />
+            )}
             {isPromptLibraryOpen && <PromptLibraryModal onClose={() => setIsPromptLibraryOpen(false)} />}
             {itemPendingTechPack && <TechPackWarningModal onClose={() => setItemPendingTechPack(null)} onProceedSingleView={() => { if(itemPendingTechPack) performTechPackGeneration(itemPendingTechPack) }} onGenerateMultiView={() => { if(itemPendingTechPack) { setSelectedImageForTool(itemPendingTechPack); setActiveTool('multiview'); setItemPendingTechPack(null); } }} />}
             {itemPendingAudit && <AuditWarningModal onClose={() => setItemPendingAudit(null)} onGenerateTechPack={() => { if(itemPendingAudit) { handleGenerateTechPack(itemPendingAudit); setItemPendingAudit(null); } }} onProceed={() => { if(itemPendingAudit) performProductReview(itemPendingAudit) }} />}
@@ -1126,6 +1138,7 @@ const App: React.FC = () => {
                 activeItemName={activeSlot?.name}
                 onExitItem={handleExitItemWorkspace}
                 onShowPromptLibrary={() => setIsPromptLibraryOpen(true)}
+                onShowDataViewer={() => setIsDataViewerOpen(true)}
                 onSignOut={handleLogout}
             />
             

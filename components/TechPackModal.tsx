@@ -386,11 +386,11 @@ export const TechPackModal: React.FC<TechPackModalProps> = ({ techPack, onClose,
                         <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-400 hover:text-white" title={isMaximized ? "Restore" : "Maximize"}>
                             {isMaximized ? (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4v4m0 0H4m4 0L3 3m13 1v4m0 0h4m-4 0l5-5m-5 13v-4m0 0h4m-4 0l5 5M8 20v-4m0 0H4m4 0l-5 5" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4v5H4 M15 4v5h5 M9 20v-5H4 M15 20v-5h5 M4 4l5 5 M20 4l-5 5 M4 20l5-5 M20 20l-5-5" />
                                 </svg>
                             ) : (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5 M4 4l5 5 M20 4l-5 5 M4 20l5-5 M20 20l-5-5" />
                                 </svg>
                             )}
                         </button>

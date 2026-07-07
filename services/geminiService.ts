@@ -190,6 +190,32 @@ const extractImageOrThrow = (response: GenerateContentResponse, context: string 
     throw new Error(`${context} did not return an image or text explanation.`);
 };
 
+
+const extractImagesOrThrow = (response: any, context: string = "API"): { data: string, mimeType: string }[] => {
+    const images: { data: string, mimeType: string }[] = [];
+    if (!response.candidates || response.candidates.length === 0) {
+        throw new Error(`${context} did not return any candidates.`);
+    }
+    for (const candidate of response.candidates) {
+        const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
+        if (imagePart && imagePart.inlineData) {
+            images.push({
+                data: imagePart.inlineData.data,
+                mimeType: imagePart.inlineData.mimeType || 'image/png'
+            });
+        }
+    }
+    if (images.length === 0) {
+        const textPart = response.candidates[0]?.content?.parts?.find((part: any) => part.text);
+        if (textPart && textPart.text) {
+            const reason = textPart.text.trim();
+            throw new Error(`${context} returned text instead of image: "${reason.length > 100 ? reason.substring(0, 100) + '...' : reason}"`);
+        }
+        throw new Error(`${context} did not return any images or text explanation.`);
+    }
+    return images;
+};
+
 export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ styleDna: string, palette: string[] }> => {
     const localImage = await getImageData(image);
     const ai = getAI();
@@ -242,32 +268,17 @@ export const generateMoodBoardImage = async (styleDna: string, palette: string[]
     const prompt = `A high-end fashion mood board collage for a ${audience} collection. Aesthetic: ${styleDna}. Color palette: ${palette.join(', ')}. Include editorial photography, fabric swatches, and abstract textures. Photorealistic, professional fashion design presentation.`;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3.1-flash-lite-image',
         contents: {
             parts: [{ text: prompt }]
         },
         config: {
-            imageConfig: {
-                aspectRatio: "16:9",
-                imageSize: "1K"
-            }
+            imageConfig: { aspectRatio: "16:9" }
         }
     });
 
-    let base64Image = "";
-    const parts = response.candidates?.[0]?.content?.parts || [];
-    for (const part of parts) {
-        if (part.inlineData) {
-            base64Image = part.inlineData.data;
-            break;
-        }
-    }
-
-    if (!base64Image) {
-        throw new Error("Failed to generate image from Gemini API.");
-    }
-
-    const url = await uploadBase64(base64Image, 'image/jpeg');
+    const imgData = extractImageOrThrow(response, "Mood Board");
+    const url = await uploadBase64(imgData.data, imgData.mimeType);
     return { url };
 };
 
@@ -337,19 +348,21 @@ export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: strin
         { text: sketchPrompt },
     ];
 
-    const generateSingleSketch = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: sketchParts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Sketch Generator");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: sketchParts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: 4 }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const sketches: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
+        sketches.push({ url });
+    }
 
-    const sketchPromises = Array(4).fill(null).map(() => generateSingleSketch());
-    const sketches = await Promise.all(sketchPromises);
 
     return { summary, sketches };
 };
@@ -365,20 +378,23 @@ export const generateSketches = async (prompt: string, context?: { styleDna: str
 
     const parts = [{ text: fullPrompt }];
 
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Sketch Generator");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+        images.push({ url });
+    }
+    return images;
 };
+
 
 export const generatePattern = async (prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
@@ -386,20 +402,22 @@ export const generatePattern = async (prompt: string, imageCount: number = 4): P
     
     const parts = [{ text: fullPrompt }];
 
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Pattern Generator");
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "1:1", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Pattern Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+        images.push({ url });
+    }
+    return images;
 };
+
 
 export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
@@ -421,20 +439,23 @@ export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskIm
     
     parts.push({ text: textPrompt });
 
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Sketch Editor");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+        images.push({ url });
+    }
+    return images;
 };
+
 
 export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
@@ -456,20 +477,23 @@ export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, m
     
     parts.push({ text: textPrompt });
 
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Image Editor");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+        images.push({ url });
+    }
+    return images;
 };
+
 
 export const visualiseProduct = async (baseImage: ImageSource, prompt: string, patternImage?: ImageSource, context?: { styleDna: string, palette: string[] }, imageCount: number = 4, designAttributes?: Record<string, string>): Promise<ImageSource[]> => {
     const ai = getAI();
@@ -497,20 +521,23 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
         parts.splice(1, 0, { inlineData: { data: localPattern.data, mimeType: localPattern.mimeType } });
     }
     
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Product Visualiser");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
+        images.push({ url });
     }
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+    return images;
 };
+
 
 export const placeOnModel = async (productImage: ImageSource, prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
@@ -522,20 +549,23 @@ export const placeOnModel = async (productImage: ImageSource, prompt: string, im
         { text: textPrompt },
     ];
     
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-        const imgData = extractImageOrThrow(response, "Model Placement");
+    
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-image',
+        contents: { parts: parts },
+        config: {
+            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
+        },
+    });
+    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
+    const images: ImageSource[] = [];
+    for (const imgData of imagesData) {
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return Promise.all(imagePromises);
+        images.push({ url });
+    }
+    return images;
 };
+
 
 export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate: string[]): Promise<{ view: string, image: ImageSource }[]> => {
     const ai = getAI();
@@ -564,9 +594,11 @@ export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate
         ];
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
+            model: 'gemini-3.1-flash-lite-image',
             contents: { parts: parts },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
+            config: {
+                imageConfig: { aspectRatio: "16:9" }
+            },
         });
 
         const imgData = extractImageOrThrow(response, `Multi-View (${viewType})`);
@@ -577,8 +609,11 @@ export const generateMultiViews = async (baseImage: ImageSource, viewsToGenerate
         };
     };
 
-    const promises = viewsToGenerate.map((view: string) => generateView(view));
-    return Promise.all(promises);
+    const results: { view: string, image: ImageSource }[] = [];
+    for (const view of viewsToGenerate) {
+        results.push(await generateView(view));
+    }
+    return results;
 };
 
 export const generateTechPack = async (image: ImageSource, additionalImages: ImageSource[] = [], originalDesignAttributes?: Record<string, string>): Promise<{ sections: TechPackSection[], bomData: BOMRow[], sizingData: SizingRow[], costingData: CostingRow[], placementData: PlacementPin[] }> => {
@@ -966,9 +1001,11 @@ export const generateRangeVisual = async (compositeBase64: string, stagingPrompt
     ];
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3.1-flash-lite-image',
         contents: { parts },
-        config: { responseModalities: [Modality.IMAGE, Modality.TEXT] }
+        config: {
+            imageConfig: { aspectRatio: "16:9" }
+        }
     });
 
     const imgData = extractImageOrThrow(response, "Range Visualiser");

@@ -197,6 +197,16 @@ const extractImagesOrThrow = (response: any, context: string = "API"): { data: s
         throw new Error(`${context} did not return any candidates.`);
     }
     for (const candidate of response.candidates) {
+        if (candidate.finishReason === 'SAFETY') {
+            throw new Error(`${context} was blocked by safety filters. Please try modifying your prompt.`);
+        }
+        if (candidate.finishReason === 'RECITATION') {
+            throw new Error(`${context} was blocked due to recitation. Please try modifying your prompt.`);
+        }
+        if (candidate.finishReason && candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
+             throw new Error(`${context} was blocked with reason: ${candidate.finishReason}`);
+        }
+
         const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
         if (imagePart && imagePart.inlineData) {
             images.push({
@@ -211,7 +221,7 @@ const extractImagesOrThrow = (response: any, context: string = "API"): { data: s
             const reason = textPart.text.trim();
             throw new Error(`${context} returned text instead of image: "${reason.length > 100 ? reason.substring(0, 100) + '...' : reason}"`);
         }
-        throw new Error(`${context} did not return any images or text explanation.`);
+        throw new Error(`${context} did not return any images or text explanation. This could be due to an unhandled safety block or API issue.`);
     }
     return images;
 };
@@ -235,91 +245,62 @@ export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ sty
         { text: prompt },
     ];
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: { parts },
-        config: { responseMimeType: 'application/json' }
-    });
+    
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: {
+                imageConfig: { aspectRatio: "3:4" }
+            },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
+    };
 
-    return JSON.parse(response.text || '{}');
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+
 };
 
-export const generateCollectionIntakeFromText = async (brief: string, audience: string): Promise<{ styleDna: string, palette: string[] }> => {
-    const ai = getAI();
-    const prompt = `Act as a Fashion Creative Director. I am starting a new collection. Target audience: ${audience}. Design brief: ${brief}. Generate a cohesive 'Style DNA' (a concise 50-word paragraph describing the aesthetic, silhouettes, and textures) and extract a 5-color hex code 'Palette' that perfectly represents this brief. Return strict JSON format: { "styleDna": "string", "palette": ["#hex", "#hex", "#hex", "#hex", "#hex"] }.`;
 
+
+export const generateCollectionIntakeFromText = async (textBrief: string, audience: string): Promise<{ styleDna: string, palette: string[] }> => {
+    const ai = getAI();
+    const prompt = `Based on this brief: "${textBrief}" and target audience: "${audience}", generate a Style DNA description and a color palette (array of 3-5 color hex codes). Return ONLY a JSON object with keys "styleDna" and "palette".`;
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            thinkingConfig: { thinkingBudget: 0 }
-        }
+        contents: { parts: [{ text: prompt }] },
     });
-
-    const text = response.text;
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("API did not return content.");
-    
     return JSON.parse(extractJSON(text));
 };
 
 export const generateMoodBoardImage = async (styleDna: string, palette: string[], audience: string): Promise<ImageSource> => {
     const ai = getAI();
     const prompt = `A high-end fashion mood board collage for a ${audience} collection. Aesthetic: ${styleDna}. Color palette: ${palette.join(', ')}. Include editorial photography, fabric swatches, and abstract textures. Photorealistic, professional fashion design presentation.`;
-
     const response = await ai.models.generateContent({
         model: 'gemini-3.1-flash-lite-image',
-        contents: {
-            parts: [{ text: prompt }]
-        },
-        config: {
-            imageConfig: { aspectRatio: "16:9" }
-        }
+        contents: { parts: [{ text: prompt }] },
+        config: { imageConfig: { aspectRatio: "16:9" } }
     });
-
     const imgData = extractImageOrThrow(response, "Mood Board");
     const url = await uploadBase64(imgData.data, imgData.mimeType);
     return { url };
 };
 
-export const generateItemSuggestions = async (
-    collectionName: string,
-    styleDna: string,
-    existingItems: string[] = []
-): Promise<{ name: string; reasoning: string }[]> => {
+export const generateItemSuggestions = async (collectionName: string, styleDna: string, existingNames: string[]): Promise<{ name: string, description: string }[]> => {
     const ai = getAI();
-    const prompt = `Act as a Senior Fashion Merchandiser planning a collection named "${collectionName}".
-    
-    Style DNA: "${styleDna}"
-    ${existingItems && existingItems.length > 0 ? `Current Line Sheet contains: ${existingItems.join(', ')}.` : 'This is a new collection.'}
-    
-    Task: Suggest 3 specific fashion items to add to this collection.
-    
-    Rules:
-    1. Suggestions must be specific descriptive names (e.g. "Oversized Cable Knit Cardigan" instead of just "Cardigan").
-    2. Suggestions must complement the Style DNA and any existing items to ensure a cohesive range (mix of tops, bottoms, outerwear etc).
-    3. If existing items are provided, do NOT duplicate them. Suggest items that fill gaps (e.g. if there are tops, suggest bottoms or outerwear).
-    
-    Return JSON array:
-    [
-        { "name": "Item Name", "reasoning": "Brief reason why this fits" }
-    ]
-    Do not include trailing commas in JSON array.`;
-
+    const prompt = `For a fashion collection named "${collectionName}" with this Style DNA: "${styleDna}", suggest 3 new garment items to design. They should not overlap with these existing items: ${existingNames.join(', ')}. Return ONLY a JSON array of objects, each with "name" (short) and "description".`;
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: { parts: [{ text: prompt }] },
-        config: { responseMimeType: 'application/json' }
     });
-
-    try {
-        return JSON.parse(extractJSON(response.text || '[]'));
-    } catch (e: any) {
-        console.warn("Retrying JSON suggestion parse fallback", e);
-        // Fallback for tricky trailing commas if extractJSON fails
-        const cleaned = (response.text || '[]').replace(/,\s*([\]}])/g, '$1');
-        return JSON.parse(extractJSON(cleaned));
-    }
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("API did not return content.");
+    return JSON.parse(extractJSON(text));
 };
 
 export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: string): Promise<{ summary: string; sketches: ImageSource[] }> => {
@@ -327,104 +308,67 @@ export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: strin
     const ai = getAI();
     
     const summaryPrompt = "Analyze the attached images which form a fashion mood board. Provide a summary of the core themes, a suggested color palette (using common color names), key silhouettes, and potential fabrics. Format this as a concise but detailed report with clear headings for each section (e.g., ## Core Themes, ## Color Palette). The tone should be professional and insightful for a fashion designer.";
-    
     const summaryParts = [
         ...localImages.map((img: any) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
         { text: summaryPrompt },
     ];
-
     const summaryResponse = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: { parts: summaryParts },
     });
-    const summary = summaryResponse.text || '';
+    const summary = summaryResponse.text || summaryResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     const baseSketchPrompt = "Inspired by the aesthetic of the attached mood board images, generate a minimalist black and white fashion flat sketch of a cohesive";
     const promptAddition = userPrompt ? ` ${userPrompt}` : ' garment';
     const sketchPrompt = `${baseSketchPrompt}${promptAddition}. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
-    
     const sketchParts = [
         ...localImages.map((img: any) => ({ inlineData: { data: img.data, mimeType: img.mimeType } })),
         { text: sketchPrompt },
     ];
 
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: sketchParts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: 4 }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const sketches: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    const generateSingleSketch = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: sketchParts },
+            config: { imageConfig: { aspectRatio: "3:4" } },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        sketches.push({ url });
-    }
+        return { url };
+    };
 
-
+    const sketchPromises = Array(4).fill(null).map(() => generateSingleSketch());
+    const sketches = await Promise.all(sketchPromises);
     return { summary, sketches };
 };
 
 export const generateSketches = async (prompt: string, context?: { styleDna: string }, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
-    
     let fullPrompt = `A minimalist black and white fashion flat sketch of ${prompt}. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
-    
     if (context) {
         fullPrompt += `\n\nDESIGN CONTEXT - The design must strictly adhere to the following Style DNA: ${context.styleDna}. Incorporate these aesthetic cues into the silhouette and details.`;
     }
-
     const parts = [{ text: fullPrompt }];
 
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: { imageConfig: { aspectRatio: "3:4" } },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
+        return { url };
+    };
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
 };
-
-
-export const generatePattern = async (prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
-    const ai = getAI();
-    const fullPrompt = `A seamless, tileable, photorealistic pattern of ${prompt}. The image should be a square (1:1 aspect ratio).`;
-    
-    const parts = [{ text: fullPrompt }];
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "1:1", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Pattern Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
-        const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
-};
-
 
 export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskImage?: ImageSource, imageCount: number = 4, context?: { styleDna: string, palette: string[] }): Promise<ImageSource[]> => {
     const ai = getAI();
     const localBase = await getImageData(baseImage);
-    let textPrompt: string;
+    let textPrompt;
     const parts: any[] = [{ inlineData: { data: localBase.data, mimeType: localBase.mimeType } }];
-
     if (maskImage) {
         const localMask = await getImageData(maskImage);
         textPrompt = `Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "${prompt}". The output must remain a minimalist black and white flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`;
@@ -432,28 +376,48 @@ export const tweakSketch = async (baseImage: ImageSource, prompt: string, maskIm
     } else {
         textPrompt = `Based on the provided fashion flat sketch, generate a new version with the following modification: "${prompt}". The output must strictly be a minimalist black and white fashion flat sketch. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.`;
     }
-    
     if (context) {
         textPrompt += `\n\nDESIGN CONTEXT - The design must subtly adhere to the following Style DNA: ${context.styleDna}. Incorporate these aesthetic cues into the silhouette and details. Ensure any coloring strictly respects the brand color palette (Hex codes: ${context.palette.join(', ')}). If a general color is requested (like "red"), match it to the closest color in this palette.`;
     }
-    
     parts.push({ text: textPrompt });
 
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: { imageConfig: { aspectRatio: "3:4" } },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
+        return { url };
+    };
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+};
+
+export const generatePattern = async (prompt: string, imageCount: number = 4): Promise<ImageSource[]> => {
+    const ai = getAI();
+    const fullPrompt = `A seamless, tileable, photorealistic pattern of ${prompt}. The image should be a square (1:1 aspect ratio).`;
+    
+    const parts = [{ text: fullPrompt }];
+
+    
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: {
+                imageConfig: { aspectRatio: "3:4" }
+            },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
+        const url = await uploadBase64(imgData.data, imgData.mimeType);
+        return { url };
+    };
+
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+
 };
 
 
@@ -478,20 +442,23 @@ export const tweakStudioImage = async (baseImage: ImageSource, prompt: string, m
     parts.push({ text: textPrompt });
 
     
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: {
+                imageConfig: { aspectRatio: "3:4" }
+            },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
+        return { url };
+    };
+
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+
 };
 
 
@@ -522,20 +489,23 @@ export const visualiseProduct = async (baseImage: ImageSource, prompt: string, p
     }
     
     
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: {
+                imageConfig: { aspectRatio: "3:4" }
+            },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
+        return { url };
+    };
+
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+
 };
 
 
@@ -550,20 +520,23 @@ export const placeOnModel = async (productImage: ImageSource, prompt: string, im
     ];
     
     
-    const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-image',
-        contents: { parts: parts },
-        config: {
-            imageConfig: { aspectRatio: "3:4", numberOfImages: imageCount }
-        },
-    });
-    const imagesData = extractImagesOrThrow(response, "Sketch Generator");
-    const images: ImageSource[] = [];
-    for (const imgData of imagesData) {
+    
+    const generateSingleImage = async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: parts },
+            config: {
+                imageConfig: { aspectRatio: "3:4" }
+            },
+        });
+        const imgData = extractImageOrThrow(response, "Sketch Generator");
         const url = await uploadBase64(imgData.data, imgData.mimeType);
-        images.push({ url });
-    }
-    return images;
+        return { url };
+    };
+
+    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
+    return await Promise.all(imagePromises);
+
 };
 
 

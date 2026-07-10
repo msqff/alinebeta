@@ -1,0 +1,13 @@
+const fs = require('fs');
+let content = fs.readFileSync('services/geminiService.ts', 'utf8');
+
+const regexGenerateSketches = /let fullPrompt = \`A minimalist black and white fashion flat sketch of \$\{prompt\}\. Clean line drawing, unfilled outline only, on a stark pure white background\. No shadows, no gradients, no shading\. Professional, clean, hand-drawn quality\. The aspect ratio of the image should be 3:4\.\`;/;
+content = content.replace(regexGenerateSketches, `let fullPrompt = \`A single, front-facing minimalist black and white fashion flat sketch of \${prompt}. Only show the front view, do not include multiple views or back views. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.\`;`);
+
+const regexTweakSketchMask = /textPrompt = \`Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "\\\$\\{prompt\\}"\. The output must remain a minimalist black and white flat sketch\. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background\. No shadows, no gradients, no shading\.\`;/;
+content = content.replace(regexTweakSketchMask, `textPrompt = \`Based on the provided fashion flat sketch and the mask, apply this change ONLY to the masked area: "\${prompt}". The output must remain a minimalist black and white flat sketch showing a single, front-facing view (no multiple views). Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.\`;`);
+
+const regexTweakSketchNoMask = /textPrompt = \`Based on the provided fashion flat sketch, generate a new version with the following modification: "\\\$\\{prompt\\}"\. The output must strictly be a minimalist black and white fashion flat sketch\. Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background\. No shadows, no gradients, no shading\.\`;/;
+content = content.replace(regexTweakSketchNoMask, `textPrompt = \`Based on the provided fashion flat sketch, generate a new version with the following modification: "\${prompt}". The output must strictly be a minimalist black and white fashion flat sketch showing a single, front-facing view (no multiple views). Maintain the style of the original: clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading.\`;`);
+
+fs.writeFileSync('services/geminiService.ts', content);

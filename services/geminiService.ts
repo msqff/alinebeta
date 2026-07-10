@@ -69,68 +69,30 @@ export const fileToBase64 = async (file: File): Promise<ImageSource> => {
 };
 
 const extractJSON = (text: string): string => {
-    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    let openBraces = 0;
-    let inString = false;
-    let escapeNext = false;
+    let cleanText = text.replace(/\r\n/g, '\n');
+    cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
     
     // Find the first { or [
     const firstBrace = cleanText.indexOf('{');
     const firstBracket = cleanText.indexOf('[');
     
     let startIdx = -1;
-    let openingChar = '';
-    let closingChar = '';
-    
     if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
         startIdx = firstBrace;
-        openingChar = '{';
-        closingChar = '}';
     } else if (firstBracket !== -1) {
         startIdx = firstBracket;
-        openingChar = '[';
-        closingChar = ']';
     }
-    
-    let endIdx = -1;
     
     if (startIdx !== -1) {
-        for (let i = startIdx; i < cleanText.length; i++) {
-            const char = cleanText[i];
-            
-            if (escapeNext) {
-                escapeNext = false;
-                continue;
-            }
-            
-            if (char === '\\') {
-                escapeNext = true;
-                continue;
-            }
-            
-            if (char === '"') {
-                inString = !inString;
-                continue;
-            }
-            
-            if (!inString) {
-                if (char === openingChar) openBraces++;
-                else if (char === closingChar) openBraces--;
-                
-                if (openBraces === 0) {
-                    endIdx = i;
-                    break;
-                }
-            }
-        }
+        cleanText = cleanText.substring(startIdx);
     }
     
-    if (startIdx !== -1 && endIdx !== -1) {
-        return cleanText.substring(startIdx, endIdx + 1);
+    try {
+        return jsonrepair(cleanText);
+    } catch (e) {
+        console.error("jsonrepair failed, returning raw string", e);
+        return cleanText;
     }
-    
-    return cleanText; // fallback
 };
 
 const getAI = () => {
@@ -170,9 +132,22 @@ const getImageData = async (image: ImageSource): Promise<{ data: string, mimeTyp
     throw new Error("Image source missing URL and data");
 };
 
-const extractImageOrThrow = (response: GenerateContentResponse, context: string = "API"): { data: string, mimeType: string } => {
+const extractImageOrThrow = (response: any, context: string = "API"): { data: string, mimeType: string } => {
+    if (response.promptFeedback?.blockReason) {
+        throw new Error(`${context} prompt was blocked. Reason: ${response.promptFeedback.blockReason}`);
+    }
+
     const candidate = response.candidates?.[0];
-    const imagePart = candidate?.content?.parts?.find(part => part.inlineData);
+    if (!candidate) {
+        console.error(`[${context}] Raw API Response:`, JSON.stringify(response, null, 2));
+        throw new Error(`${context} did not return any candidates.`);
+    }
+
+    if (candidate.finishReason && candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
+        throw new Error(`${context} was blocked. Reason: ${candidate.finishReason}`);
+    }
+
+    const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
     
     if (imagePart && imagePart.inlineData) {
         return {
@@ -181,30 +156,30 @@ const extractImageOrThrow = (response: GenerateContentResponse, context: string 
         };
     }
 
-    const textPart = candidate?.content?.parts?.find(part => part.text);
+    const textPart = candidate?.content?.parts?.find((part: any) => part.text);
     if (textPart && textPart.text) {
         const reason = textPart.text.trim();
         throw new Error(`${context} returned text instead of image: "${reason.length > 100 ? reason.substring(0, 100) + '...' : reason}"`);
     }
 
+    console.error(`[${context}] Raw API Response:`, JSON.stringify(response, null, 2));
     throw new Error(`${context} did not return an image or text explanation.`);
 };
 
 
 const extractImagesOrThrow = (response: any, context: string = "API"): { data: string, mimeType: string }[] => {
+    if (response.promptFeedback?.blockReason) {
+        throw new Error(`${context} prompt was blocked. Reason: ${response.promptFeedback.blockReason}`);
+    }
+
     const images: { data: string, mimeType: string }[] = [];
     if (!response.candidates || response.candidates.length === 0) {
+        console.error(`[${context}] Raw API Response:`, JSON.stringify(response, null, 2));
         throw new Error(`${context} did not return any candidates.`);
     }
     for (const candidate of response.candidates) {
-        if (candidate.finishReason === 'SAFETY') {
-            throw new Error(`${context} was blocked by safety filters. Please try modifying your prompt.`);
-        }
-        if (candidate.finishReason === 'RECITATION') {
-            throw new Error(`${context} was blocked due to recitation. Please try modifying your prompt.`);
-        }
         if (candidate.finishReason && candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
-             throw new Error(`${context} was blocked with reason: ${candidate.finishReason}`);
+            throw new Error(`${context} was blocked. Reason: ${candidate.finishReason}`);
         }
 
         const imagePart = candidate?.content?.parts?.find((part: any) => part.inlineData);
@@ -221,6 +196,7 @@ const extractImagesOrThrow = (response: any, context: string = "API"): { data: s
             const reason = textPart.text.trim();
             throw new Error(`${context} returned text instead of image: "${reason.length > 100 ? reason.substring(0, 100) + '...' : reason}"`);
         }
+        console.error(`[${context}] Raw API Response:`, JSON.stringify(response, null, 2));
         throw new Error(`${context} did not return any images or text explanation. This could be due to an unhandled safety block or API issue.`);
     }
     return images;
@@ -344,7 +320,7 @@ export const analyzeMoodBoard = async (images: ImageSource[], userPrompt?: strin
 
 export const generateSketches = async (prompt: string, context?: { styleDna: string }, imageCount: number = 4): Promise<ImageSource[]> => {
     const ai = getAI();
-    let fullPrompt = `A minimalist black and white fashion flat sketch of ${prompt}. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
+    let fullPrompt = `A single, front-facing minimalist black and white fashion flat sketch of ${prompt}. Only show the front view, do not include multiple views or back views. Clean line drawing, unfilled outline only, on a stark pure white background. No shadows, no gradients, no shading. Professional, clean, hand-drawn quality. The aspect ratio of the image should be 3:4.`;
     if (context) {
         fullPrompt += `\n\nDESIGN CONTEXT - The design must strictly adhere to the following Style DNA: ${context.styleDna}. Incorporate these aesthetic cues into the silhouette and details.`;
     }

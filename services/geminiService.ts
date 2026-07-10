@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ImageSource, TechPackSection, ProductReviewResult, ShopperPulseResult, ShopperPersona, SizingRow, CostingRow, PlacementPin, BOMRow, GalleryAsset, ChatMessage } from '../types';
 
@@ -221,23 +222,14 @@ export const analyzeCollectionIntake = async (image: ImageSource): Promise<{ sty
         { text: prompt },
     ];
 
+    const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: { parts: parts },
+    });
     
-    const generateSingleImage = async () => {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite-image',
-            contents: { parts: parts },
-            config: {
-                imageConfig: { aspectRatio: "3:4" }
-            },
-        });
-        const imgData = extractImageOrThrow(response, "Sketch Generator");
-        const url = await uploadBase64(imgData.data, imgData.mimeType);
-        return { url };
-    };
-
-    const imagePromises = Array(imageCount).fill(null).map(() => generateSingleImage());
-    return await Promise.all(imagePromises);
-
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("API did not return content.");
+    return JSON.parse(extractJSON(text));
 };
 
 

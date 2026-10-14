@@ -9,17 +9,26 @@ interface ToolSelectorProps {
 const ToolCard: React.FC<{ title: string; description: string; icon: React.ReactElement; onClick: () => void; index: number }> = ({ title, description, icon, onClick, index }) => (
     <div
         onClick={onClick}
-        className="group relative glass-panel rounded-2xl p-8 flex flex-col items-center text-center cursor-pointer
-                   hover:border-indigo-500/50 hover:bg-slate-800/80 hover:shadow-2xl hover:shadow-indigo-500/10 
-                   transition-all duration-300 transform hover:-translate-y-2 overflow-hidden"
-        style={{ animationDelay: `${index * 100}ms` }}
+        className="group relative bg-atelier-900/90 border border-white/[0.08] rounded-xl p-6 flex flex-col items-start text-left cursor-pointer
+                   hover:border-indigo-500/40 hover:bg-atelier-850 hover:shadow-xl hover:shadow-indigo-500/5 
+                   transition-all duration-200 transform hover:-translate-y-0.5 overflow-hidden"
     >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-        <div className="relative z-10 text-indigo-400 mb-6 p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300 shadow-inner">
-            {icon}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        <div className="w-full flex items-center justify-between mb-5">
+            <div className="p-3 bg-atelier-800 rounded-lg border border-white/[0.06] text-zinc-300 group-hover:text-indigo-400 group-hover:border-indigo-500/30 group-hover:bg-indigo-500/10 transition-all duration-200">
+                {icon}
+            </div>
+            <span className="font-mono text-[11px] text-zinc-600 group-hover:text-zinc-400 tracking-wider transition-colors">
+                0{index + 1}
+            </span>
         </div>
-        <h3 className="relative z-10 text-lg font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">{title}</h3>
-        <p className="relative z-10 text-slate-400 text-sm leading-relaxed group-hover:text-slate-300 transition-colors">{description}</p>
+        <h3 className="text-base font-semibold text-white mb-1.5 group-hover:text-indigo-200 transition-colors tracking-tight flex items-center gap-2">
+            {title}
+            <svg className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+        </h3>
+        <p className="text-zinc-400 text-xs leading-relaxed group-hover:text-zinc-300 transition-colors">{description}</p>
     </div>
 );
 
@@ -28,76 +37,84 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ onSelectTool, itemNa
         {
             id: 'moodboard' as Tool,
             title: 'Mood Board Analyst',
-            description: 'Analyze trends and generate fresh concepts from inspiration images.',
+            description: 'Extract aesthetic DNA, color palettes, and fresh directional concepts from inspiration visuals.',
             icon: <MoodBoardIcon />,
         },
         {
             id: 'sketch' as Tool,
             title: 'Sketch Generator',
-            description: 'Rapidly create detailed professional fashion flats from text.',
+            description: 'Create clean, precise technical fashion flat sketches from natural language prompts.',
             icon: <PencilIcon />,
         },
         {
             id: 'visualiser' as Tool,
             title: 'Product Visualiser',
-            description: 'Render sketches into photorealistic studio quality product shots.',
+            description: 'Render flat sketches into photorealistic studio-lit luxury apparel photography.',
             icon: <PaletteIcon />,
         },
         {
             id: 'multiview' as Tool,
             title: 'Multi-View Generator',
-            description: 'Generate consistent back, side, and detail views from a single front-view.',
+            description: 'Synthesize consistent back, side profile, and construction detail views from a single front view.',
             icon: <RotationIcon />,
         },
         {
             id: 'model' as Tool,
             title: 'Model Placement',
-            description: 'Showcase designs on AI models in customizable environments.',
+            description: 'Showcase garments fitted on editorial AI talent in customized atmospheric environments.',
             icon: <UserIcon />,
         },
         {
             id: 'techpack' as Tool,
             title: 'Tech Pack Generator',
-            description: 'Auto-generate comprehensive technical specifications for manufacturing.',
+            description: 'Auto-generate comprehensive factory-ready technical specifications, BOMs, and measurements.',
             icon: <ClipboardIcon />,
         },
         {
             id: 'review' as Tool,
             title: 'Basic Audit',
-            description: 'Audit designs for IP infringement risks and garment safety hazards.',
+            description: 'Screen designs for IP infringement exposure, safety compliance, and production risks.',
             icon: <ShieldCheckIcon />,
         },
         {
             id: 'shopperPulse' as Tool,
             title: 'Shopper Pulse',
-            description: 'AI-driven commercial viability testing for the UK High Street.',
+            description: 'Evaluate commercial viability, target demographic appeal, and retail price elasticity.',
             icon: <HeartBeatIcon />,
         },
     ];
 
     return (
-        <div className="flex flex-col items-center justify-center h-full py-12 animate-fade-in">
-            <div className="text-center mb-16">
+        <div className="flex flex-col items-center justify-center py-8 animate-fade-in w-full">
+            <div className="text-center mb-10 max-w-2xl">
                 {itemName ? (
                     <>
-                        <p className="text-sm font-bold text-indigo-400 tracking-widest uppercase mb-2">Item Workspace</p>
-                        <h2 className="text-5xl font-bold mb-4 text-white tracking-tight">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[11px] font-mono tracking-widest uppercase mb-3">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                            Item Workspace
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-3 text-white tracking-tight">
                             {itemName}
                         </h2>
                     </>
                 ) : (
-                    <h2 className="text-5xl font-bold mb-4 text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                        A-LINE AI
-                    </h2>
+                    <div className="mb-2">
+                        <span className="text-[10px] font-mono tracking-[0.25em] uppercase text-zinc-500 block mb-2 font-semibold">
+                            Studio Suite
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-3 text-white tracking-tight">
+                            Fashion Design Operations
+                        </h2>
+                    </div>
                 )}
-                <p className="text-lg text-slate-400 max-w-xl mx-auto font-light">
+                <p className="text-sm text-zinc-400 font-normal leading-relaxed">
                     {itemName 
-                        ? "Select a tool to develop this item. All assets will be saved to this slot."
-                        : "The End-to-End Fashion Operating System. From abstract line to manufacturing specification."
+                        ? "Select a studio engine below to develop this slot. All generated assets sync directly to this item."
+                        : "From initial concept extraction to manufacturing-grade technical specification."
                     }
                 </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 w-full max-w-[90rem]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-7xl">
                 {tools.map((tool, index) => (
                     <ToolCard key={tool.id} {...tool} onClick={() => onSelectTool(tool.id)} index={index} />
                 ))}

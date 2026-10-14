@@ -110,27 +110,27 @@ export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, on
 
     return (
         <div className="flex flex-col h-full animate-fade-in relative">
-            <div className="flex items-center mb-8 border-b border-white/5 pb-6">
-                <button onClick={onBack} className="mr-6 p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors backdrop-blur-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            <div className="flex items-center mb-6 border-b border-white/[0.07] pb-4">
+                <button onClick={onBack} className="mr-4 p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors border border-white/[0.06]">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 </button>
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Sketch Generator</h2>
-                    <p className="text-slate-400 mt-1 font-light">Turn your concepts into professional fashion flats.</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Sketch Generator</h2>
+                    <p className="text-zinc-400 text-xs font-normal">Synthesize professional front-facing fashion technical flats.</p>
                 </div>
             </div>
 
-            <div className="flex justify-center mb-6">
-                <div className="bg-slate-900/50 p-1 rounded-xl flex items-center border border-white/5 shadow-inner">
+            <div className="flex justify-center mb-5">
+                <div className="bg-atelier-900 p-1 rounded-lg flex items-center border border-white/[0.07]">
                     <button 
                         onClick={() => setMode('text')} 
-                        className={`px-6 py-2 rounded-lg text-sm font-bold tracking-wide transition-all ${mode === 'text' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                        className={`px-5 py-1.5 rounded-md text-xs font-medium tracking-wide transition-all ${mode === 'text' ? 'bg-atelier-800 text-white border border-white/[0.08] shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'}`}
                     >
                         Text Brief
                     </button>
                     <button 
                         onClick={() => setMode('reference')} 
-                        className={`px-6 py-2 rounded-lg text-sm font-bold tracking-wide transition-all ${mode === 'reference' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                        className={`px-5 py-1.5 rounded-md text-xs font-medium tracking-wide transition-all ${mode === 'reference' ? 'bg-atelier-800 text-white border border-white/[0.08] shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'}`}
                     >
                         Reference Analysis
                     </button>
@@ -139,16 +139,15 @@ export const SketchGenerator: React.FC<SketchGeneratorProps> = ({ onGenerate, on
 
             {mode === 'text' ? (
                 <form onSubmit={handleSubmit} className="flex-grow flex flex-col max-w-4xl mx-auto w-full">
-                    <div className="flex-grow mb-8">
-                        <label htmlFor="prompt" className="block text-xs font-bold uppercase text-slate-500 mb-3 ml-1">Design Description</label>
-                        <div className="relative group">
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-20 group-focus-within:opacity-100 transition duration-500 blur"></div>
+                    <div className="flex-grow mb-6">
+                        <label htmlFor="prompt" className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-2 ml-1">Design Specification</label>
+                        <div className="relative">
                             <textarea
                                 id="prompt"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Describe the garment in detail (e.g., A structured wool blazer with peaked lapels, double-breasted closure, and flap pockets)..."
-                                className="relative w-full h-72 p-6 bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none text-lg text-white placeholder-slate-600 resize-none leading-relaxed"
+                                placeholder="Describe the garment in detail (e.g., A structured wool blazer with peaked lapels, double-breasted closure, tailored waist, and flap pockets)..."
+                                className="w-full h-64 p-5 bg-atelier-950 border border-white/[0.08] rounded-xl focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 text-sm text-zinc-100 placeholder-zinc-600 resize-none leading-relaxed font-sans"
                             />
                         </div>
                     </div>

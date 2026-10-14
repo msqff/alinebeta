@@ -300,29 +300,35 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
-            <h2 className="text-4xl font-bold text-white mb-2">Select Collection</h2>
-            <p className="text-slate-400 mb-12">Choose a project to begin or create a new line.</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] py-8 animate-fade-in w-full">
+            <div className="text-center mb-10">
+                <span className="text-[10px] font-mono tracking-[0.25em] uppercase text-zinc-500 block mb-2 font-semibold">
+                    Studio Library
+                </span>
+                <h2 className="text-3xl font-bold text-white tracking-tight">Active Collections</h2>
+                <p className="text-zinc-400 text-xs mt-1">Select a fashion line to enter the atelier or initialize a new collection.</p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-6xl px-4">
                 {/* Create New Card */}
                 <div 
                     onClick={() => setIsCreating(true)}
-                    className="group aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/20 hover:bg-indigo-900/10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300"
+                    className="group aspect-[4/3] rounded-xl border border-dashed border-zinc-700/80 hover:border-indigo-500/60 bg-atelier-900/50 hover:bg-indigo-950/15 flex flex-col items-center justify-center cursor-pointer transition-all duration-200"
                 >
-                    <div className="p-4 bg-slate-800 rounded-full mb-4 group-hover:scale-110 transition-transform group-hover:bg-indigo-600 group-hover:text-white text-slate-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <div className="p-3 bg-atelier-800 rounded-lg mb-3 group-hover:scale-105 transition-transform group-hover:bg-indigo-600 text-zinc-400 group-hover:text-white border border-white/[0.06]">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4v16m8-8H4" />
                         </svg>
                     </div>
-                    <span className="font-bold text-slate-400 group-hover:text-white transition-colors">Create New Collection</span>
+                    <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition-colors">Create New Collection</span>
+                    <span className="text-[10px] font-mono text-zinc-600 mt-1">Mood Board & Style DNA</span>
                 </div>
 
                 {/* Existing Collections */}
                 {collections.map(collection => (
                     <div 
                         key={collection.id}
-                        className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700 hover:border-indigo-500 shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 bg-slate-900"
+                        className="group relative aspect-[4/3] rounded-xl overflow-hidden border border-white/[0.08] hover:border-white/[0.18] shadow-md hover:shadow-xl transition-all duration-200 bg-atelier-950"
                     >
                         {/* Collection Card Body (Clickable) */}
                         <div 
@@ -332,16 +338,16 @@ export const CollectionSelector: React.FC<CollectionSelectorProps> = ({ collecti
                             <img 
                                 src={getDisplaySrc(collection.masterMoodBoard) || undefined} 
                                 alt={collection.name}
-                                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                                className="w-full h-full object-cover opacity-60 group-hover:opacity-45 transition-opacity"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent p-6 flex flex-col justify-end">
-                                <h3 className="text-xl font-bold text-white mb-2">{collection.name}</h3>
+                            <div className="absolute inset-0 bg-gradient-to-t from-atelier-950 via-atelier-950/60 to-transparent p-5 flex flex-col justify-end">
+                                <h3 className="text-base font-bold text-white mb-1.5 tracking-tight">{collection.name}</h3>
                                 <div className="flex space-x-1 mb-2">
                                     {collection.extractedPalette.map((color, i) => (
-                                        <div key={i} className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: color }}></div>
+                                        <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: color }}></div>
                                     ))}
                                 </div>
-                                <p className="text-xs text-slate-400 line-clamp-2">{collection.styleDna}</p>
+                                <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">{collection.styleDna}</p>
                             </div>
                         </div>
                         

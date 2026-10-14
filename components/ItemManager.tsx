@@ -49,7 +49,10 @@ export const ItemManager: React.FC<ItemManagerProps> = ({ slots, assets, finalAs
                 // Get existing names to avoid duplicates
                 const existingNames = slots.map(s => s.name);
                 const suggestions = await generateItemSuggestions(collection.name, collection.styleDna, existingNames);
-                const topSuggestions = suggestions.slice(0, 3);
+                const topSuggestions: { name: string; reasoning: string }[] = suggestions.slice(0, 3).map(s => ({
+                    name: s.name,
+                    reasoning: (s as any).reasoning || s.description || ''
+                }));
                 setSuggestedItems(topSuggestions); // Keep top 3
                 suggestionsCache[collection.id] = topSuggestions;
             } catch (e) {
@@ -150,24 +153,24 @@ const ItemSlotCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col h-full relative group hover:bg-slate-900/60 transition-colors w-full">
-            <div className="mb-3 w-full relative h-[28px] flex items-center justify-between gap-2 overflow-hidden">
+        <div className="bg-atelier-900/90 border border-white/[0.08] hover:border-white/[0.16] rounded-xl p-4 flex flex-col h-full relative group hover:bg-atelier-850/80 transition-all shadow-md hover:shadow-xl w-full">
+            <div className="mb-3 w-full relative h-[30px] flex items-center justify-between gap-2 overflow-hidden">
                 {isEditingName && (
                     <>
                         <div className="fixed inset-0 z-[190]" onClick={() => setIsEditingName(false)} />
-                        <div className="absolute top-10 left-0 z-[200] bg-slate-900 border border-indigo-500/50 rounded-xl p-4 shadow-2xl w-64">
-                            <h3 className="text-sm font-bold text-white mb-3">Rename Item</h3>
+                        <div className="absolute top-10 left-0 z-[200] bg-atelier-900 border border-indigo-500/40 rounded-xl p-4 shadow-2xl w-64 backdrop-blur-xl">
+                            <h3 className="text-xs font-semibold text-white mb-2 font-mono uppercase tracking-wider">Rename Item</h3>
                             <form onSubmit={handleRenameSubmit}>
                                 <input
                                     type="text"
                                     value={editedName}
                                     onChange={(e) => setEditedName(e.target.value)}
-                                    className="w-full bg-slate-800 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 mb-3 text-sm"
+                                    className="w-full bg-atelier-800 text-white px-3 py-1.5 rounded-lg border border-white/[0.1] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 mb-3 text-xs"
                                     autoFocus
                                 />
                                 <div className="flex justify-end gap-2">
-                                    <button type="button" onClick={() => setIsEditingName(false)} className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Cancel</button>
-                                    <button type="submit" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-xs font-bold">Save</button>
+                                    <button type="button" onClick={() => setIsEditingName(false)} className="px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors">Cancel</button>
+                                    <button type="submit" className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors text-xs font-medium">Save</button>
                                 </div>
                             </form>
                         </div>
@@ -179,18 +182,18 @@ const ItemSlotCard: React.FC<{
                         setEditedName(slot.name);
                         setIsEditingName(true);
                     }}
-                    className="flex-1 min-w-0 font-bold text-white text-sm bg-slate-800 px-3 py-1 rounded-full cursor-pointer hover:bg-slate-700 hover:text-indigo-300 transition-colors truncate text-left mr-2"
-                    title="Rename Item"
+                    className="flex-1 min-w-0 font-semibold text-zinc-100 text-xs bg-atelier-800/80 px-2.5 py-1 rounded-md border border-white/[0.06] cursor-pointer hover:border-indigo-500/40 hover:text-white transition-colors truncate text-left mr-2"
+                    title="Click to Rename Item"
                 >
                     {slot.name}
                 </button>
                 
                 <button 
                     onClick={() => onEnterItem(slot.id)}
-                    className="flex-shrink-0 text-xs text-indigo-400 hover:text-white font-medium flex items-center transition-colors"
+                    className="flex-shrink-0 text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-indigo-500/10"
                 >
-                    Open
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <span>Studio</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                 </button>
@@ -199,14 +202,14 @@ const ItemSlotCard: React.FC<{
             {/* Hero Slot */}
             <div 
                 onClick={() => activeAsset ? onSelectItem(slot.id, heroType) : onOpenTool('sketch', slot.id, activeAsset?.id)}
-                className={`aspect-square mb-2 rounded-xl relative overflow-hidden transition-all bg-slate-900 w-full group/hero ${activeAsset ? 'cursor-pointer' : 'border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/10 cursor-pointer'}`}
+                className={`aspect-square mb-2.5 rounded-lg relative overflow-hidden transition-all bg-atelier-950 w-full group/hero ${activeAsset ? 'cursor-pointer border border-white/[0.06]' : 'border border-dashed border-zinc-700/60 hover:border-indigo-500/50 hover:bg-indigo-500/5 cursor-pointer'}`}
             >
                 {activeAsset ? (
                     <img src={getAssetDisplaySrc(activeAsset) || undefined} alt={slot.name} className="w-full h-full object-cover" />
                 ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
-                        <span className="text-xs uppercase font-bold">Generate Sketch</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 hover:text-indigo-400 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                        <span className="text-[11px] font-mono uppercase tracking-wider">Generate Flat</span>
                     </div>
                 )}
                 
@@ -284,7 +287,7 @@ const ItemSlotCard: React.FC<{
 
             {/* Variants Strip */}
             {variants.length > 1 && (
-                <div className="flex gap-2 mb-3 overflow-x-auto custom-scrollbar pb-1">
+                <div className="flex gap-1.5 mb-3 overflow-x-auto custom-scrollbar pb-1">
                     {variants.map(variant => (
                         <button
                             key={variant.id}
@@ -292,7 +295,7 @@ const ItemSlotCard: React.FC<{
                                 e.stopPropagation();
                                 setActiveVariantId(variant.id);
                             }}
-                            className={`flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${activeVariantId === variant.id ? 'border-indigo-500 scale-105' : 'border-slate-700 hover:border-slate-500'}`}
+                            className={`flex-shrink-0 w-9 h-9 rounded-md overflow-hidden border transition-all ${activeVariantId === variant.id ? 'border-indigo-500 ring-1 ring-indigo-500/50 scale-105' : 'border-white/[0.08] hover:border-zinc-500'}`}
                             title={variant.tag}
                         >
                             <img src={getAssetDisplaySrc(variant)} alt="Variant thumbnail" className="w-full h-full object-cover" />
@@ -306,49 +309,49 @@ const ItemSlotCard: React.FC<{
                 {/* Sketch Link */}
                 <div 
                     onClick={() => activeAsset?.tag === 'Sketch' ? onSelectItem(slot.id, 'sketch') : onOpenTool('sketch', slot.id, activeAsset?.id)}
-                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${activeAsset?.tag === 'Sketch' ? 'border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
-                    title={activeAsset?.tag === 'Sketch' ? "View Sketch" : "Generate Sketch"}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all ${activeAsset?.tag === 'Sketch' ? 'border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20' : 'border-white/[0.07] bg-atelier-800/50 hover:border-zinc-500 hover:bg-atelier-750'}`}
+                    title={activeAsset?.tag === 'Sketch' ? "View Sketch" : "Generate Flat"}
                 >
                     {activeAsset?.tag === 'Sketch' ? (
-                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Sketch" />
+                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-70 hover:opacity-100 transition-opacity" alt="Sketch" />
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>
                     )}
                 </div>
 
                 {/* Render Link */}
                 <div 
                     onClick={() => activeAsset?.tag === 'Studio Image' ? onSelectItem(slot.id, 'studio') : (activeAsset ? onOpenTool('visualiser', slot.id, activeAsset?.id) : null)}
-                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset?.tag === 'Studio Image' ? 'border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 cursor-pointer' : (activeAsset ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset?.tag === 'Studio Image' ? 'border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 cursor-pointer' : (activeAsset ? 'border-white/[0.07] bg-atelier-800/50 hover:border-zinc-500 hover:bg-atelier-750 cursor-pointer' : 'border-white/[0.03] opacity-25 pointer-events-none')}`}
                     title={activeAsset?.tag === 'Studio Image' ? "View Render" : "Visualise Product"}
                 >
                      {activeAsset?.tag === 'Studio Image' ? (
-                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-60 hover:opacity-100 transition-opacity" alt="Render" />
+                        <img src={getAssetDisplaySrc(activeAsset) || undefined} className="w-full h-full object-cover rounded-lg opacity-70 hover:opacity-100 transition-opacity" alt="Render" />
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     )}
                 </div>
 
                 {/* Tech Pack Link */}
                 <div 
                     onClick={() => techpack ? onSelectItem(slot.id, 'techpack') : (activeAsset ? onOpenTool('techpack', slot.id, activeAsset?.id) : null)}
-                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (activeAsset ? 'border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none')}`}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${techpack ? 'border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 cursor-pointer' : (activeAsset ? 'border-white/[0.07] bg-atelier-800/50 hover:border-zinc-500 hover:bg-atelier-750 cursor-pointer' : 'border-white/[0.03] opacity-25 pointer-events-none')}`}
                     title={techpack ? "View Tech Pack" : "Generate Tech Pack"}
                 >
                      {techpack ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     )}
                 </div>
                 
                 {/* Copilot Link */}
                 <div 
                     onClick={() => activeAsset ? onOpenCopilot(activeAsset) : null}
-                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset ? 'border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer' : 'border-slate-800 opacity-30 pointer-events-none'}`}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-all ${activeAsset ? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer' : 'border-white/[0.03] opacity-25 pointer-events-none'}`}
                     title={activeAsset ? "Ask Design Assistant" : "Generate an asset first"}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${activeAsset ? 'text-amber-400' : 'text-slate-500'}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${activeAsset ? 'text-amber-400' : 'text-zinc-600'}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
                 </div>
             </div>
         </div>
@@ -371,27 +374,27 @@ const ItemSlotCard: React.FC<{
 
     return (
         <div className="w-full h-full flex flex-col animate-fade-in">
-             <div className="flex justify-between items-center mb-8">
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Collection Line Sheet</h2>
-                    <p className="text-slate-400 mt-1 font-light">Manage your item slots. All items inherit the Master Style DNA.</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Collection Line Sheet</h2>
+                    <p className="text-zinc-400 text-xs mt-0.5">Manage your garment item slots. All styles inherit Master Style DNA.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                     <button
                         onClick={() => setIsVisualizerOpen(true)}
-                        className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl shadow-lg border border-slate-700 transition-all flex items-center"
+                        className="px-3.5 py-2 bg-atelier-800 hover:bg-atelier-750 text-zinc-200 text-xs font-medium rounded-lg border border-white/[0.08] transition-all flex items-center gap-1.5 shadow-sm"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         Range Visualisation
                     </button>
                     {!isAdding && (
                         <button 
                             onClick={() => setIsAdding(true)}
-                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/20 transition-all flex items-center"
+                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg shadow-sm shadow-indigo-600/20 transition-all flex items-center gap-1.5"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
                             Add New Item Slot
@@ -400,7 +403,7 @@ const ItemSlotCard: React.FC<{
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar pb-20 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto custom-scrollbar pb-20 items-stretch">
                 {(() => {
                     const sortedSlots = [...slots].sort((a, b) => (b.created || 0) - (a.created || 0));
                     return sortedSlots.map((slot, index) => (
@@ -428,22 +431,24 @@ const ItemSlotCard: React.FC<{
                     <div 
                         key={`suggestion-${idx}`}
                         onClick={() => handleAcceptSuggestion(item.name)}
-                        className="bg-indigo-900/10 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-900/20 rounded-2xl p-4 flex flex-col h-full relative group transition-all w-full cursor-pointer"
+                        className="bg-atelier-900/60 border border-dashed border-indigo-500/30 hover:border-indigo-500/70 hover:bg-indigo-950/20 rounded-xl p-4 flex flex-col h-full relative group transition-all w-full cursor-pointer"
                     >
-                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold uppercase px-2 py-1 rounded-bl-lg rounded-tr-xl opacity-80 z-10 shadow-lg">AI Suggestion</div>
-                        
-                        {/* Header Spacer to match Item Card Title */}
-                        <div className="mb-3 min-h-[28px] w-full flex-shrink-0"></div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-mono tracking-wider uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                AI Suggestion
+                            </span>
+                            <span className="text-[10px] text-zinc-500 font-mono">0{idx + 1}</span>
+                        </div>
 
                         {/* Main Content mimicking Aspect Ratio */}
-                        <div className="aspect-square mb-3 w-full flex flex-col items-center justify-center text-center p-4">
-                            <h4 className="text-white font-bold text-lg mb-2 group-hover:text-indigo-300 transition-colors line-clamp-2">{item.name}</h4>
-                            <p className="text-xs text-slate-400 leading-relaxed max-w-[90%] line-clamp-4">{item.reasoning}</p>
+                        <div className="aspect-square mb-3 w-full flex flex-col items-center justify-center text-center p-3">
+                            <h4 className="text-white font-semibold text-sm mb-1.5 group-hover:text-indigo-300 transition-colors line-clamp-2">{item.name}</h4>
+                            <p className="text-xs text-zinc-400 leading-relaxed max-w-[95%] line-clamp-4">{item.reasoning}</p>
                         </div>
 
                         {/* Footer Spacer to match Action Bar */}
-                        <div className="h-14 mt-auto w-full flex-shrink-0 flex items-center justify-center bg-indigo-900/40 rounded-xl border border-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wide group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="h-10 mt-auto w-full flex items-center justify-center bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-300 text-xs font-medium tracking-wide group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
                             Add to Line

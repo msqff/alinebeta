@@ -1,21 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-g" />
+    <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>A-LINE AI | Professional Fashion Design Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
+              sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            colors: {
+              atelier: {
+                950: '#090a0d',
+                900: '#111317',
+                850: '#16191f',
+                800: '#1c2027',
+                750: '#232832',
+                700: '#2b313d',
+                600: '#3e4656',
+              }
             },
             animation: {
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'slide-up': 'slideUp 0.5s ease-out forwards',
+              'fade-in': 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             },
             keyframes: {
               fadeIn: {
@@ -23,7 +38,7 @@
                 '100%': { opacity: '1' },
               },
               slideUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '0%': { opacity: '0', transform: 'translateY(12px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
               }
             }
@@ -31,53 +46,57 @@
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body { 
-        font-family: 'Inter', sans-serif; 
-        background-color: #020617;
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif; 
+        background-color: #090a0d;
+        color: #e4e4e7;
       }
       
-      /* Voxel/Isometric Grid Pattern */
-      .voxel-pattern {
-        background-color: #020617;
+      /* Atelier Studio Darkroom Vignette & Micro-texture */
+      .atelier-ambient {
+        background-color: #090a0d;
         background-image: 
-          linear-gradient(30deg, #0f172a 12%, transparent 12.5%, transparent 87%, #0f172a 87.5%, #0f172a),
-          linear-gradient(150deg, #0f172a 12%, transparent 12.5%, transparent 87%, #0f172a 87.5%, #0f172a),
-          linear-gradient(30deg, #0f172a 12%, transparent 12.5%, transparent 87%, #0f172a 87.5%, #0f172a),
-          linear-gradient(150deg, #0f172a 12%, transparent 12.5%, transparent 87%, #0f172a 87.5%, #0f172a),
-          linear-gradient(60deg, #1e293b 25%, transparent 25.5%, transparent 75%, #1e293b 75%, #1e293b),
-          linear-gradient(60deg, #1e293b 25%, transparent 25.5%, transparent 75%, #1e293b 75%, #1e293b);
-        background-size: 40px 70px;
-        background-position: 0 0, 0 0, 20px 35px, 20px 35px, 0 0, 20px 35px;
-        opacity: 0.6;
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.08), transparent 70%),
+          radial-gradient(circle at 100% 100%, rgba(30, 41, 59, 0.3), transparent 50%),
+          linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
       }
 
       .glass-panel {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(17, 19, 23, 0.75);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
       }
 
-      /* Scrollbar */
+      .glass-panel-subtle {
+        background: rgba(22, 25, 31, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      /* Atelier Scrollbars */
       ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
       }
       ::-webkit-scrollbar-track {
         background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 3px;
+        background: #27272a; 
+        border-radius: 9999px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #475569; 
+        background: #3f3f46; 
       }
       .custom-scrollbar::-webkit-scrollbar {
-         width: 6px;
-         height: 6px;
+        width: 5px;
+        height: 5px;
       }
     </style>
   <script type="importmap">
@@ -90,9 +109,8 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-950 text-slate-200 selection:bg-indigo-500/30 selection:text-indigo-100">
+  <body class="bg-atelier-950 text-zinc-200 selection:bg-indigo-500/25 selection:text-white antialiased">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

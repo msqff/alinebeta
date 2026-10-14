@@ -31,26 +31,26 @@ export const DualGallery: React.FC<DualGalleryProps> = (props) => {
                   (props.collectionGalleryItems || []);
 
     return (
-        <aside className="w-full bg-slate-950/60 backdrop-blur-xl border-t border-white/10 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+        <aside aria-label="Asset Gallery" className="w-full bg-atelier-950/90 backdrop-blur-xl border-t border-white/[0.08] sticky bottom-0 z-20 shadow-[0_-10px_36px_rgba(0,0,0,0.6)]">
             <div className="max-w-screen-2xl mx-auto">
-                <div className="flex justify-between items-center pt-4 px-6">
-                     <div className="flex space-x-2 bg-slate-900/50 p-1.5 rounded-xl border border-white/5 shadow-inner">
+                <div className="flex justify-between items-center pt-3 px-6">
+                     <div className="flex space-x-1.5 bg-atelier-900 p-1 rounded-lg border border-white/[0.07]">
                          <button
                             onClick={() => setActiveGallery('ideation')}
-                            className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeGallery === 'ideation' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                            className={`px-4 py-1.5 text-xs font-mono tracking-wider uppercase rounded-md transition-all ${activeGallery === 'ideation' ? 'bg-atelier-800 text-white border border-white/[0.08] shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'}`}
                         >
                             Ideation ({props.ideationItems.length})
                         </button>
                         <button
                             onClick={() => setActiveGallery('finals')}
-                            className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeGallery === 'finals' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                            className={`px-4 py-1.5 text-xs font-mono tracking-wider uppercase rounded-md transition-all ${activeGallery === 'finals' ? 'bg-atelier-800 text-white border border-white/[0.08] shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'}`}
                         >
                             Finals ({props.finalItems.length})
                         </button>
                         {props.isCollectionLevelView && (
                             <button
                                 onClick={() => setActiveGallery('collection')}
-                                className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${activeGallery === 'collection' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                                className={`px-4 py-1.5 text-xs font-mono tracking-wider uppercase rounded-md transition-all ${activeGallery === 'collection' ? 'bg-atelier-800 text-white border border-white/[0.08] shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]'}`}
                             >
                                 Range Visuals ({props.collectionGalleryItems?.length || 0})
                             </button>
@@ -58,11 +58,11 @@ export const DualGallery: React.FC<DualGalleryProps> = (props) => {
                     </div>
                     <button
                         onClick={props.onOpenFullscreen}
-                        className="text-xs font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors flex items-center px-4 py-2 rounded-lg hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20"
+                        className="text-xs font-mono tracking-wider uppercase text-zinc-400 hover:text-white transition-colors flex items-center px-3 py-1.5 rounded-lg border border-white/[0.06] hover:bg-white/[0.04]"
                     >
-                        Expand Gallery
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
+                        <span>Expand Gallery</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 ml-1.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
                         </svg>
                     </button>
                 </div>

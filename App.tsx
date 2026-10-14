@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
+import { TopStudioBar } from './components/TopStudioBar';
 import { CollectionSelector } from './components/CollectionSelector';
 import { CollectionSettingsModal } from './components/CollectionSettingsModal';
 import { ItemManager } from './components/ItemManager';
@@ -1039,7 +1040,7 @@ const App: React.FC = () => {
 
     if (!isAuthReady) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-atelier-950 flex items-center justify-center">
                 <Spinner />
             </div>
         );
@@ -1047,37 +1048,44 @@ const App: React.FC = () => {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-                <div className="bg-slate-900/50 p-8 rounded-2xl border border-white/10 max-w-md w-full text-center">
-                    <h1 className="text-3xl font-bold text-white mb-2">A-Line AI</h1>
-                    <p className="text-slate-400 mb-8">Sign in to access your workspace and save your designs.</p>
+            <div className="min-h-screen bg-atelier-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                <div className="fixed inset-0 atelier-ambient pointer-events-none opacity-60"></div>
+                <div className="relative z-10 bg-atelier-900/90 backdrop-blur-xl p-8 md:p-10 rounded-2xl border border-white/[0.08] shadow-2xl max-w-md w-full text-center">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center mx-auto mb-5 shadow-inner">
+                        <span className="font-mono text-base font-bold tracking-tight text-white">A<span className="text-indigo-400">/</span>L</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">A-LINE AI</h1>
+                    <p className="text-zinc-400 text-xs leading-relaxed mb-8">
+                        The End-to-End Fashion Operating System.<br />Sign in to access your atelier workspace and saved collections.
+                    </p>
                     <button 
                         onClick={handleLogin}
-                        className="w-full py-3 px-4 bg-white text-slate-900 rounded-xl font-medium hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-zinc-950 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg shadow-white/5 active:scale-[0.98]"
                     >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                         </svg>
-                        Sign in with Google
+                        <span>Continue with Google</span>
                     </button>
+                    <p className="mt-6 text-[10px] font-mono tracking-wider uppercase text-zinc-500">Encrypted Studio Cloud Storage</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col font-sans text-slate-200 selection:bg-indigo-500/30 selection:text-indigo-100">
-            {/* Voxel background layer */}
-            <div className="fixed inset-0 z-[-1] voxel-pattern pointer-events-none"></div>
-            <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-transparent via-slate-950/50 to-slate-950 pointer-events-none"></div>
+        <div className="min-h-screen flex flex-col font-sans text-zinc-200 selection:bg-indigo-500/25 selection:text-white bg-atelier-950">
+            {/* Atelier Studio Ambient Lighting */}
+            <div className="fixed inset-0 z-[-1] atelier-ambient pointer-events-none"></div>
+            <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-transparent via-atelier-950/40 to-atelier-950 pointer-events-none"></div>
             
             {isLoading && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 transition-all duration-300">
+                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-50 transition-all duration-300">
                     <Spinner />
-                    <p className="mt-6 text-xl text-white font-light tracking-wide animate-pulse">{loadingMessage}</p>
+                    <p className="mt-5 text-sm text-zinc-300 font-mono tracking-wider animate-pulse">{loadingMessage}</p>
                 </div>
             )}
             
@@ -1141,12 +1149,29 @@ const App: React.FC = () => {
                 onShowDataViewer={() => setIsDataViewerOpen(true)}
                 onSignOut={handleLogout}
             />
+
+            {/* Streamlined Top Studio Bar */}
+            {activeCollection && (activeSlotId || activeTool) && (
+                <TopStudioBar 
+                    activeTool={activeTool}
+                    onSelectTool={handleSelectTool}
+                    onExitTool={handleBackToMenu}
+                    activeItemName={activeSlot?.name}
+                    onExitItem={handleExitItemWorkspace}
+                    onOpenOverview={() => setActiveTool(null)}
+                />
+            )}
             
-            <main className="flex-grow flex flex-col p-6 md:p-8 max-w-screen-2xl mx-auto w-full">
-                <div className={`glass-panel rounded-3xl shadow-2xl p-8 md:p-12 flex-grow flex flex-col relative overflow-hidden transition-all duration-500 ${activeTool ? 'bg-slate-900/70' : 'bg-slate-900/40'}`}>
+            <main className="flex-grow flex flex-col p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
+                <div className={`glass-panel rounded-2xl shadow-2xl p-6 md:p-8 flex-grow flex flex-col relative overflow-hidden transition-all duration-300 ${activeTool ? 'bg-atelier-900/85' : 'bg-atelier-900/50'}`}>
                     {renderMainContent()}
                 </div>
-                 {error && <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 text-red-200 rounded-xl text-center font-medium backdrop-blur-sm shadow-lg animate-fade-in">{error}</div>}
+                {error && (
+                    <div className="mt-4 p-3.5 bg-red-500/10 border border-red-500/25 text-red-200 rounded-xl text-xs font-mono tracking-wide backdrop-blur-md shadow-lg animate-fade-in flex items-center justify-between">
+                        <span>{error}</span>
+                        <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 text-xs ml-4">✕</button>
+                    </div>
+                )}
             </main>
             
             {activeCollection && (
